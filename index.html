@@ -2,177 +2,335 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>哈爾濱回憶錄｜相簿總覽</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>哈爾濱回憶錄 | 擦開冰霜開啟旅程</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'night-bg': '#0A0C12',
-                        'card-bg': '#1C1C1E',
-                        'accent-blue': '#0071e3',
-                    },
-                }
-            }
-        }
-    </script>
     <style>
-        * { box-sizing: border-box; }
-        body { background-color: #0a0c12; color: #f5f5f7; font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
-        #snowCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; pointer-events: none; opacity: 0.8; }
-        .preview-box { width: 110px !important; height: 110px !important; min-width: 110px !important; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-template-rows: repeat(2, minmax(0, 1fr)) !important; gap: 3px; background: #2c2c2e; border-radius: 18px; overflow: hidden !important; flex-shrink: 0; }
-        .preview-box img { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block; transition: transform 0.5s ease; }
-        .album-card { background-color: #1c1c1e; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); transition: all 0.3s ease; display: flex !important; align-items: center; gap: 20px; padding: 20px; border-radius: 28px; text-decoration: none; color: inherit; width: 100%; }
-        .album-card:hover { background-color: #262629; transform: scale(1.01); border-color: rgba(255, 255, 255, 0.2); }
-        .album-card:hover img { transform: scale(1.1); }
-        .info-content { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, sans-serif; }
+
+        /* 背景層 */
+        .background-layer {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), 
+                        url('images/cover_bg.jpg') center/cover no-repeat;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 窗外的雪花 */
+        #snowCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 20;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+
+/* --- 跑步小人系統 --- */
+.runner-track {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    z-index: 999;
+    pointer-events: none;
+    transform: scale(0.85);
+    transform-origin: bottom center;
+    /* ✅ 將 scale 從原本的 0.85 改小，例如 0.5 或 0.6 */
+    transform: scale(0.4); 
+    
+    /* 確保縮放是貼著底邊進行的 */
+    transform-origin: bottom center;
+    
+    /* 如果縮小後覺得太靠近底部，微調此值 */
+    margin-bottom: 4.5px;
+}
+
+.runner {
+    /* ✅ 關鍵：寬度設為長條圖的 1/8 (約 100px)，高度固定 */
+    width: 648px; 
+    height: 168px;
+    background-image: url('images/runners/char00/00.png');
+    
+    /* ✅ 關鍵：因為是 8 幀大合體，背景大小設為 800% 100% */
+    background-size: 700% 100%; 
+    image-rendering: pixelated;
+    
+    /* ✅ 關鍵：steps 設為 8，對應你的 8 張逐格圖 */
+    animation: spriteRun 0.55s steps(6) infinite;
+}
+
+@keyframes spriteRun {
+    from { background-position: 0% 0; }
+    to { background-position: 100% 0; }
+}
+
+/* 手機版微調：縮小一點點即可，保持比例 */
+    @media (max-width: 240px) {
+        .runner {
+            width: 50px;
+            height: 60px;
+        }
+        .runner-track {
+            height: 80px;
+            gap: 8px;
+        }
+    }
+
+
+    .app-wrap {
+      position: relative;
+      z-index: 10;
+    }
+
+
+
+
+        /* 窗戶冰霜 */
+        #frostCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            cursor: pointer;
+            touch-action: none;
+            transition: opacity 0.8s ease-in-out, filter 0.8s ease-in-out;
+        }
+
+        /* 轉場啟動 */
+        .clearing #frostCanvas {
+            opacity: 0;
+            filter: blur(55px);
+            pointer-events: none;
+        }
+        .clearing .background-layer {
+            transform: scale(1.1);
+        }
+
+        /* UI 元件層 */
+        .ui-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 30px;
+        }
+
+        /* 強化後的跳過按鈕 */
+        .skip-btn {
+            align-self: flex-end;
+            pointer-events: auto;
+            background: #0071e3;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 99px;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            border: 2px solid rgba(255,255,255,0.4);
+            box-shadow: 0 8px 20px rgba(0, 113, 227, 0.5);
+            transition: all 0.3s ease;
+        }
+        .skip-btn:hover {
+            transform: scale(1.05);
+            background: #0082ff;
+            border-color: #fff;
+        }
+
+        /* 文字強化：黑色膠囊背景 */
+.hint-capsule {
+        position: fixed;
+        bottom: 70px; /* 這裡要比 runner-track 高 */
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(15px);
+        padding: 12px 28px;
+        border-radius: 99px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        text-align: center;
+        color: white;
+        pointer-events: none;
+        animation: breathe 3s infinite ease-in-out;
+    }
+
+    @keyframes spriteRun {
+        from { background-position: 0% 0; }
+        to { background-position: 100% 0; } 
+    }
+
+        .spine-box {
+            width: 150px;
+            height: 150px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 <body class="antialiased">
+
+    <!-- 背景層 -->
+    <div class="background-layer">
+        <div class="spine-box">
+            <span class="text-7xl drop-shadow-2xl">❄️</span>
+        </div>
+        <p class="text-blue-200 text-xs tracking-[0.4em] font-black uppercase">Harbin Memories</p>
+    </div>
+
+    <!-- 窗外雪花 -->
     <canvas id="snowCanvas"></canvas>
-    <div class="min-h-screen relative z-10">
-        <nav class="sticky top-0 z-[100] bg-[#0A0C12]/90 backdrop-blur-md border-b border-white/10 py-4">
-            <div class="max-w-xl mx-auto px-5 flex items-center justify-between">
-                <h1 class="text-xl font-bold tracking-tight">哈爾濱回憶錄</h1>
-                <a href="home.html" class="text-sm font-semibold text-[#0071e3] hover:text-blue-400">← 返回回憶地圖</a>
-            </div>
-        </nav>
-        <main class="max-w-xl mx-auto p-5">
-            <p class="text-sm text-gray-500 mb-8 text-center">點擊相簿卡片查看各拍攝者的精彩回憶。</p>
-            <div id="albumList" class="flex flex-col gap-5"></div>
-        </main>
+
+    <!-- 窗戶冰霜 -->
+    <canvas id="frostCanvas"></canvas>
+
+    <!-- UI 層 -->
+    <div class="ui-overlay">
+        <button class="skip-btn" onclick="enterSite()">跳過動畫 ➔</button>
+        
+        <div class="hint-capsule">
+            <h2 class="text-xl font-black mb-1 tracking-wider text-white">哈爾濱回憶錄</h2>
+            <p class="text-xs font-bold text-blue-300 tracking-[0.15em]">用手擦拭鏡面，撥開漫天冰雪</p>
+        </div>
     </div>
 
     <script>
-        // --- 1. 配置順序與封面指定 ---
-        const ALBUM_CONFIGS = [
-            { 
-                id: "xiamen-family", 
-                name: "廈門全家福", 
-                desc: "",
-                // 💡 可以在這裡手動指定封面要哪四張 (需與 media.json 中的 url 相同)
-                //previews: ["001_20260106_232106.jpg", "020_20260106_232107.jpg", "006_20260106_232106.jpg", "021_20260106_232107.jpg"] 
-                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
-            },
-            { 
-                id: "harbin-hai", 
-                name: "哈爾濱・海 & 馨", 
-                desc: "",
-                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
-            },
-                        { 
-                id: "harbin-gang", 
-                name: "哈爾濱・綱", 
-                desc: "",
-                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
-            },
-                                    { 
-                id: "harbin-yan", 
-                name: "哈爾濱・言",
-                desc: "",
-                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
-            },
-                                                { 
-                id: "harbin-wei", 
-                name: "哈爾濱・薇", 
-                desc: "",
-                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
-            },
-                                                            { 
-                id: "harbin-jeff", 
-                name: "哈爾濱・衡", 
-                desc: "",
-                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
-            },
-                                                                        { 
-                id: "harbin-vivi", 
-                name: "哈爾濱・衡 & vivi", 
-                desc: "",
-                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
-            },
-                                                                                    { 
-                id: "harbin-xu", 
-                name: "哈爾濱・導遊小徐", 
-                desc: "",
-                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
-            },
-            {
+        const fCanvas = document.getElementById('frostCanvas');
+        const fCtx = fCanvas.getContext('2d');
+        const sCanvas = document.getElementById('snowCanvas');
+        const sCtx = sCanvas.getContext('2d');
+        
+        let isDrawing = false;
+        let hasEntered = false;
+        const threshold = 0.38; // 稍微降低門檻，更快進入
 
-                id: "xiamen-hai_jeff", 
-                name: "廈門・海&衡", 
-                desc: "",
-                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
-            }
-
-        ];
-
-        function renderAlbums() {
-            const container = document.getElementById('albumList');
-            container.innerHTML = '';
-            ALBUM_CONFIGS.forEach(conf => {
-                const card = document.createElement('a');
-                card.className = 'album-card';
-                card.href = `albums/${conf.id}/album.html`;
-                card.innerHTML = `
-                    <div id="grid-${conf.id}" class="preview-box">
-                        <div class="col-span-2 row-span-2 flex items-center justify-center text-gray-600 text-[10px]">載入中</div>
-                    </div>
-                    <div class="info-content">
-                        <h2 class="text-lg font-bold text-white mb-1">${conf.name}</h2>
-                        <p class="text-xs text-gray-500 mb-3 truncate">${conf.desc}</p>
-                        <div class="flex items-center justify-between">
-                            <span id="count-${conf.id}" class="text-[10px] font-bold px-3 py-1 rounded-full bg-white/5 text-gray-500 transition-all">讀取中...</span>
-                            <span class="text-[14px] font-bold text-[#0071e3]">進入相簿 →</span>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-                loadAlbumData(conf); 
+        // --- 雪花動畫 ---
+        let snowflakes = [];
+        function initSnow() {
+            sCanvas.width = window.innerWidth;
+            sCanvas.height = window.innerHeight;
+            snowflakes = Array.from({length: 60}, () => ({
+                x: Math.random() * sCanvas.width,
+                y: Math.random() * sCanvas.height,
+                r: Math.random() * 2 + 1,
+                v: Math.random() * 1.2 + 0.6,
+                o: Math.random() * 0.6 + 0.3
+            }));
+        }
+        function drawSnow() {
+            sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+            snowflakes.forEach(s => {
+                s.y += s.v;
+                s.x += Math.sin(s.y / 40) * 0.5;
+                if (s.y > sCanvas.height) s.y = -10;
+                sCtx.fillStyle = `rgba(255, 255, 255, ${s.o})`;
+                sCtx.beginPath();
+                sCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                sCtx.fill();
             });
+            requestAnimationFrame(drawSnow);
         }
 
-        async function loadAlbumData(conf) {
-            const gridEl = document.getElementById(`grid-${conf.id}`);
-            const countEl = document.getElementById(`count-${conf.id}`);
-            const base = `albums/${conf.id}`;
-            try {
-                const res = await fetch(`./${base}/media.json?t=${Date.now()}`);
-                const data = await res.json();
-                const imgs = data.images || [];
-                const vids = data.videos || [];
-                countEl.textContent = `${imgs.length} 照片｜${vids.length} 影片`;
-                countEl.style.backgroundColor = '#0071e3';
-                countEl.style.color = '#ffffff';
+        // --- 冰霜渲染 ---
+        function initFrost() {
+            fCanvas.width = window.innerWidth;
+            fCanvas.height = window.innerHeight;
 
-                let displayImgs = [];
-                if (conf.previews && conf.previews.length > 0) {
-                    // 模式 A: 使用手動指定的圖片
-                    displayImgs = conf.previews.slice(0, 4);
-                } else {
-                    // 模式 B: 隨機抽樣 (Shuffle & Pick 4)
-                    displayImgs = [...imgs].sort(() => 0.5 - Math.random()).slice(0, 4).map(i => i.url);
-                }
+            const grad = fCtx.createRadialGradient(
+                fCanvas.width/2, fCanvas.height/2, 0,
+                fCanvas.width/2, fCanvas.height/2, fCanvas.width
+            );
+            grad.addColorStop(0, '#f8fafc'); 
+            grad.addColorStop(1, '#94a3b8');
+            fCtx.fillStyle = grad;
+            fCtx.fillRect(0, 0, fCanvas.width, fCanvas.height);
 
-                if (displayImgs.length > 0) {
-                    gridEl.innerHTML = displayImgs.map(url => `<img src="${base}/images/${url}">`).join('');
-                } else {
-                    gridEl.innerHTML = '<div class="col-span-2 row-span-2 flex items-center justify-center text-gray-600 text-xs">無內容</div>';
-                }
-            } catch (err) {
-                countEl.textContent = "Error";
+            // 隨機細微冰晶
+            fCtx.fillStyle = 'rgba(255,255,255,0.4)';
+            for(let i=0; i<1000; i++) {
+                fCtx.beginPath();
+                fCtx.arc(Math.random()*fCanvas.width, Math.random()*fCanvas.height, Math.random()*1, 0, Math.PI*2);
+                fCtx.fill();
             }
+            fCtx.globalCompositeOperation = 'destination-out';
         }
 
-        // 雪花特效 (省略以節省空間，邏輯不變)
-        const canvas = document.getElementById('snowCanvas');
-        const ctx = canvas.getContext('2d');
-        let width, height, snowflakes = [];
-        function initSnow() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; snowflakes = Array.from({length: 80}, () => ({ x: Math.random() * width, y: Math.random() * height, r: Math.random() * 2 + 1, v: Math.random() * 0.8 + 0.5, o: Math.random() * 0.5 + 0.3 })); }
-        function updateSnow() { ctx.clearRect(0,0,width,height); snowflakes.forEach(s => { s.y += s.v; if (s.y > height) s.y = -10; ctx.fillStyle = `rgba(255,255,255,${s.o})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill(); }); requestAnimationFrame(updateSnow); }
-        window.onload = () => { initSnow(); updateSnow(); renderAlbums(); };
-        window.onresize = initSnow;
+        function scratch(x, y) {
+            if (hasEntered) return;
+            fCtx.lineWidth = 110; // 增加擦拭面積
+            fCtx.lineCap = 'round';
+            fCtx.lineJoin = 'round';
+            fCtx.beginPath();
+            fCtx.moveTo(x, y);
+            fCtx.lineTo(x + 0.1, y + 0.1);
+            fCtx.stroke();
+            if (Math.random() > 0.85) checkProgress();
+        }
+
+        function checkProgress() {
+            const data = fCtx.getImageData(0, 0, fCanvas.width, fCanvas.height).data;
+            let cleared = 0;
+            const step = 4 * 40; // 優化取樣
+            for (let i = 3; i < data.length; i += step) {
+                if (data[i] === 0) cleared++;
+            }
+            if (cleared / (data.length / step) > threshold) enterSite();
+        }
+
+        function enterSite() {
+            if (hasEntered) return;
+            hasEntered = true;
+            document.body.classList.add('clearing');
+            // ✅ 縮短轉場時間
+            setTimeout(() => {
+                window.location.href = 'home.html'; 
+            }, 900); // 縮短為 0.6 秒
+        }
+
+        const getPos = (e) => ({
+            x: e.touches ? e.touches[0].clientX : e.clientX,
+            y: e.touches ? e.touches[0].clientY : e.clientY
+        });
+        const start = (e) => { isDrawing = true; const p = getPos(e); scratch(p.x, p.y); };
+        const move = (e) => { if(isDrawing) { const p = getPos(e); scratch(p.x, p.y); } };
+        const end = () => { isDrawing = false; };
+
+        window.onload = () => {
+            initSnow();
+            drawSnow();
+            initFrost();
+        };
+        window.onresize = () => { initSnow(); initFrost(); };
+
+        fCanvas.addEventListener('mousedown', start);
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
+        fCanvas.addEventListener('touchstart', start);
+        window.addEventListener('touchmove', move);
+        window.addEventListener('touchend', end);
     </script>
+
+<div class="runner-track">
+    <div class="runner"></div>
+</div>
+
+
 </body>
 </html>
