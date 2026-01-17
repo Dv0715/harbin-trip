@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>哈爾濱回憶詳情</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0a0c12; color: #f5f5f7; font-family: -apple-system, system-ui, sans-serif; }
+        
+        /* ✅ 修改佈局：從 Column 變更為 Grid，確保「左到右、上到下」的順序 */
+        .gallery-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 12px; 
+        }
+        @media (min-width: 768px) { .gallery-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+        @media (min-width: 1024px) { .gallery-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
+        
+        .gallery-item { 
+            border-radius: 16px; 
+            overflow: hidden; 
+            background: #1c1c1e; 
+            position: relative; 
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: transform 0.3s ease;
+            /* 保持正方形或固定比例，讓網格整齊 */
+            aspect-ratio: 1 / 1; 
+        }
+        .gallery-item:hover { transform: scale(1.02); z-index: 10; }
+
+        /* 影片縮圖與播放鈕 */
+        .play-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.2);
+            transition: background 0.3s ease;
+            z-index: 5;
+        }
+        .gallery-item:hover .play-overlay { background: rgba(0, 0, 0, 0.4); }
+        
+        .play-btn {
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .media-thumb { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            display: block; 
+        }
+
+        /* 燈箱樣式 */
+        #lightbox { 
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.98); 
+            z-index: 2000; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            backdrop-filter: blur(20px); 
+        }
+        #lightbox.active { display: flex; }
+        #lbImg, #lbVid { 
+            max-width: 95%; 
+            max-height: 80vh; 
+            border-radius: 12px; 
+            box-shadow: 0 0 60px rgba(0,0,0,1); 
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <nav class="sticky top-0 z-50 bg-[#0a0c12]/80 backdrop-blur-md border-b border-white/5 p-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center px-2">
+            <a href="../../index.html" class="text-gray-400 text-sm flex items-center gap-1 hover:text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                返回總覽
+            </a>
+            <h1 id="albumName" class="font-bold tracking-tight">哈爾濱回憶</h1>
+            <div class="w-16"></div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-4 sm:p-6">
+        <!-- 容器類別更名為 gallery-grid -->
+        <div id="galleryContainer" class="gallery-grid"></div>
+        <div id="emptyState" class="hidden py-40 text-center text-gray-500">
+            <p>正在同步雲端媒體...</p>
+        </div>
+    </main>
+
+    <!-- 燈箱視窗 -->
+    <div id="lightbox" onclick="closeLightbox()">
+        <button class="absolute top-6 right-6 bg-white/10 hover:bg-white/20 p-3 rounded-full text-white transition z-50" onclick="closeLightbox()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        
+        <div class="relative w-full flex items-center justify-center p-4">
+            <img id="lbImg" class="hidden" onclick="event.stopPropagation()">
+            <video id="lbVid" controls class="hidden" onclick="event.stopPropagation()"></video>
+            
+            <button class="absolute left-4 p-4 text-white/50 hover:text-white transition" onclick="prevImg(event)">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <button class="absolute right-4 p-4 text-white/50 hover:text-white transition" onclick="nextImg(event)">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+        </div>
+        <p id="lbCap" class="mt-4 text-gray-400 text-sm font-medium tracking-widest"></p>
+    </div>
+
+    <script>
+        let allMedia = [];
+        let currentIndex = 0;
+
+        function setAlbumTitle() {
+            const segments = window.location.pathname.split('/');
+            const folderName = segments[segments.length - 2];
+            const nameMap = {
+                'harbin-hai': '哈爾濱・海&馨',               
+                'harbin-gang': '哈爾濱・綱', 
+                'harbin-yan': '哈爾濱・言',
+                'harbin-wei': '哈爾濱・薇', 
+                'harbin-jeff': '哈爾濱・衡',              
+                'harbin-vivi': '哈爾濱・vivi',
+                'harbin-xu': '哈爾濱・導遊小徐',
+                'xiamen-hai_jeff': '廈門・爸&衡'
+            };
+            document.getElementById('albumName').textContent = nameMap[folderName] || '哈爾濱相簿';
+        }
+
+        async function init() {
+            setAlbumTitle();
+            const container = document.getElementById('galleryContainer');
+            try {
+                const res = await fetch('media.json?t=' + Date.now());
+                const data = await res.json();
+                
+                // 1. 預先處理所有媒體物件，標記好類型與路徑
+                const images = (data.images || []).map(i => ({...i, type: 'image', root: 'images/'}));
+                const videos = (data.videos || []).map(v => ({...v, type: 'video', root: 'videos/'}));
+                
+                // 2. ✅ 將所有媒體合併後，統一起進行自然數字排序
+                // 這樣不論是 1.jpg 還是 2.mp4 都會按照數字大小排在一起
+                allMedia = [...images, ...videos].sort((a, b) => 
+                    a.url.localeCompare(b.url, undefined, { numeric: true, sensitivity: 'base' })
+                );
+
+                if (allMedia.length === 0) {
+                    document.getElementById('emptyState').classList.remove('hidden');
+                    return;
+                }
+
+                // 3. 渲染
+                container.innerHTML = allMedia.map((m, i) => `
+                    <div class="gallery-item cursor-pointer" onclick="openLightbox(${i})">
+                        ${m.type === 'video' ? `
+                            <div class="play-overlay">
+                                <div class="play-btn">
+                                    <svg class="w-5 h-5 text-white fill-current ml-0.5" viewBox="0 0 20 20">
+                                        <path d="M6 4l10 6-10 6V4z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <video class="media-thumb" preload="metadata" src="${m.root}${m.url}#t=0.5"></video>
+                        ` : `
+                            <img src="${m.root}${m.url}" class="media-thumb" loading="lazy">
+                        `}
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error("載入失敗:", err);
+            }
+        }
+
+        function openLightbox(index) {
+            currentIndex = index;
+            updateContent();
+            const lb = document.getElementById('lightbox');
+            lb.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function updateContent() {
+            const m = allMedia[currentIndex];
+            const img = document.getElementById('lbImg');
+            const video = document.getElementById('lbVid');
+            const cap = document.getElementById('lbCap');
+
+            img.classList.add('hidden');
+            video.classList.add('hidden');
+            video.pause();
+
+            if (m.type === 'video') {
+                video.src = `${m.root}${m.url}`;
+                video.classList.remove('hidden');
+                video.play();
+            } else {
+                img.src = `${m.root}${m.url}`;
+                img.classList.remove('hidden');
+            }
+            cap.textContent = `${currentIndex + 1} / ${allMedia.length} (${m.url})`;
+        }
+
+        function closeLightbox() {
+            const lb = document.getElementById('lightbox');
+            document.getElementById('lbVid').pause();
+            lb.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function nextImg(e) {
+            e.stopPropagation();
+            currentIndex = (currentIndex + 1) % allMedia.length;
+            updateContent();
+        }
+
+        function prevImg(e) {
+            e.stopPropagation();
+            currentIndex = (currentIndex - 1 + allMedia.length) % allMedia.length;
+            updateContent();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!document.getElementById('lightbox').classList.contains('active')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowRight') nextImg({stopPropagation: ()=>{}});
+            if (e.key === 'ArrowLeft') prevImg({stopPropagation: ()=>{}});
+        });
+
+        window.onload = init;
+    </script>
+</body>
+</html>
