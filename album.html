@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>哈爾濱回憶｜相簿詳情</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'night-bg': '#0A0C12',
+                        'card-bg': '#1C1C1E',
+                        'accent-blue': '#0071e3',
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { 
+            background-color: #0a0c12; 
+            color: #f5f5f7;
+            font-family: -apple-system, system-ui, sans-serif;
+            margin: 0; padding: 0;
+        }
+
+        /* 瀑布流排版：利用 CSS Columns 達成 */
+        .gallery-columns {
+            column-count: 2;
+            column-gap: 12px;
+        }
+        @media (min-width: 768px) {
+            .gallery-columns { column-count: 3; column-gap: 16px; }
+        }
+        @media (min-width: 1024px) {
+            .gallery-columns { column-count: 4; column-gap: 20px; }
+        }
+
+        .gallery-item {
+            break-inside: avoid;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #1c1c1e;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.3s ease;
+        }
+        @media (min-width: 768px) {
+            .gallery-item { margin-bottom: 16px; }
+            .gallery-item:hover { transform: scale(1.02); z-index: 10; }
+        }
+
+        /* 燈箱 Lightbox 樣式 */
+        #lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 200;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #lightbox.active {
+            display: flex;
+            opacity: 1;
+        }
+        #lightbox img {
+            max-width: 95%;
+            max-height: 85vh;
+            object-fit: contain;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            border-radius: 8px;
+        }
+
+        /* 隱藏捲軸但保留功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="antialiased no-scrollbar">
+
+    <!-- 頂部導航 -->
+    <nav class="sticky top-0 z-50 bg-[#0A0C12]/80 backdrop-blur-xl border-b border-white/5 py-4">
+        <div class="max-w-7xl mx-auto px-5 flex items-center justify-between">
+            <a href="../../index.html" class="flex items-center gap-2 text-gray-400 hover:text-white transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                <span class="text-sm font-medium">返回總覽</span>
+            </a>
+            <h1 id="albumName" class="text-base font-bold tracking-tight">載入中...</h1>
+            <div class="w-20"></div> <!-- 保持平衡 -->
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-5">
+        <!-- 照片瀑布流 -->
+        <div id="galleryContainer" class="gallery-columns">
+            <!-- 這裡會由 JS 自動填充照片 -->
+        </div>
+
+        <!-- 空白狀態提示 -->
+        <div id="emptyState" class="hidden py-40 text-center">
+            <p class="text-gray-500">這本相簿目前還沒有照片...</p>
+        </div>
+    </main>
+
+    <!-- 燈箱視窗 -->
+    <div id="lightbox" class="flex-col items-center justify-center" onclick="closeLightbox()">
+        <div class="absolute top-5 right-5 text-white cursor-pointer p-2 bg-white/10 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </div>
+        <img id="lightboxImg" src="" alt="放大圖" onclick="event.stopPropagation()">
+        <p id="lightboxCaption" class="mt-4 text-gray-400 text-sm font-medium"></p>
+        
+        <!-- 左右切換按鈕 -->
+        <div class="absolute inset-y-0 left-0 flex items-center px-4" onclick="prevImg(event)">
+            <button class="bg-white/10 hover:bg-white/20 p-3 rounded-full transition text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+        </div>
+        <div class="absolute inset-y-0 right-0 flex items-center px-4" onclick="nextImg(event)">
+            <button class="bg-white/10 hover:bg-white/20 p-3 rounded-full transition text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentImages = [];
+        let currentIndex = 0;
+
+        // 根據網址或資料夾名稱猜測相簿標題
+        function setAlbumTitle() {
+            const path = window.location.pathname;
+            const segments = path.split('/');
+            const folderName = segments[segments.length - 2];
+            
+            // 簡易映射表（你可以根據實際 ID 修改）
+            const nameMap = {
+                'xiamen-family': '廈門全家福',
+                'harbin-hai': '哈爾濱・海&馨',                
+                'harbin-gang': '哈爾濱・綱',
+                'harbin-yan': '哈爾濱・言',
+                'harbin-wei': '哈爾濱・薇',
+                'harbin-jeff': '哈爾濱・衡',               
+                'harbin-vivi': '哈爾濱・vivi',
+                'harbin-xu': '哈爾濱・導遊小徐'
+            };
+            
+            document.getElementById('albumName').textContent = nameMap[folderName] || '哈爾濱回憶';
+        }
+
+        async function initGallery() {
+            setAlbumTitle();
+            const container = document.getElementById('galleryContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            try {
+                // 抓取同層級的 media.json
+                const res = await fetch('media.json', { cache: 'no-store' });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                
+                currentImages = data.images || [];
+
+                if (currentImages.length === 0) {
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                // 渲染照片
+                container.innerHTML = currentImages.map((img, index) => `
+                    <div class="gallery-item cursor-pointer" onclick="openLightbox(${index})">
+                        <img src="images/${img.url}" 
+                             alt="照片" 
+                             class="w-full h-auto block"
+                             loading="lazy">
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error("無法載入照片", err);
+                emptyState.innerHTML = '<p class="text-red-500">載入失敗，請確認 media.json 是否存在。</p>';
+                emptyState.classList.remove('hidden');
+            }
+        }
+
+        // 燈箱邏輯
+        function openLightbox(index) {
+            currentIndex = index;
+            const lb = document.getElementById('lightbox');
+            const lbImg = document.getElementById('lightboxImg');
+            const lbCap = document.getElementById('lightboxCaption');
+            
+            lbImg.src = `images/${currentImages[currentIndex].url}`;
+            lbCap.textContent = `${currentIndex + 1} / ${currentImages.length}`;
+            
+            lb.classList.add('active');
+            document.body.style.overflow = 'hidden'; // 禁止捲動
+        }
+
+        function closeLightbox() {
+            const lb = document.getElementById('lightbox');
+            lb.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function nextImg(e) {
+            e.stopPropagation();
+            currentIndex = (currentIndex + 1) % currentImages.length;
+            updateLightbox();
+        }
+
+        function prevImg(e) {
+            e.stopPropagation();
+            currentIndex = (currentIndex - 1 + currentImages.length) % currentImages.length;
+            updateLightbox();
+        }
+
+        function updateLightbox() {
+            const lbImg = document.getElementById('lightboxImg');
+            const lbCap = document.getElementById('lightboxCaption');
+            lbImg.src = `images/${currentImages[currentIndex].url}`;
+            lbCap.textContent = `${currentIndex + 1} / ${currentImages.length}`;
+        }
+
+        // 鍵盤支援
+        document.addEventListener('keydown', (e) => {
+            const lb = document.getElementById('lightbox');
+            if (!lb.classList.contains('active')) return;
+            
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowRight') nextImg(e);
+            if (e.key === 'ArrowLeft') prevImg(e);
+        });
+
+        window.onload = initGallery;
+    </script>
+</body>
+</html>

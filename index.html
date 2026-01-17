@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>哈爾濱回憶錄｜相簿總覽</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'night-bg': '#0A0C12',
+                        'card-bg': '#1C1C1E',
+                        'accent-blue': '#0071e3',
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #0a0c12; color: #f5f5f7; font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        #snowCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; pointer-events: none; opacity: 0.8; }
+        .preview-box { width: 110px !important; height: 110px !important; min-width: 110px !important; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-template-rows: repeat(2, minmax(0, 1fr)) !important; gap: 3px; background: #2c2c2e; border-radius: 18px; overflow: hidden !important; flex-shrink: 0; }
+        .preview-box img { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block; transition: transform 0.5s ease; }
+        .album-card { background-color: #1c1c1e; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); transition: all 0.3s ease; display: flex !important; align-items: center; gap: 20px; padding: 20px; border-radius: 28px; text-decoration: none; color: inherit; width: 100%; }
+        .album-card:hover { background-color: #262629; transform: scale(1.01); border-color: rgba(255, 255, 255, 0.2); }
+        .album-card:hover img { transform: scale(1.1); }
+        .info-content { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+    </style>
+</head>
+<body class="antialiased">
+    <canvas id="snowCanvas"></canvas>
+    <div class="min-h-screen relative z-10">
+        <nav class="sticky top-0 z-[100] bg-[#0A0C12]/90 backdrop-blur-md border-b border-white/10 py-4">
+            <div class="max-w-xl mx-auto px-5 flex items-center justify-between">
+                <h1 class="text-xl font-bold tracking-tight">哈爾濱回憶錄</h1>
+                <a href="home.html" class="text-sm font-semibold text-[#0071e3] hover:text-blue-400">← 返回回憶地圖</a>
+            </div>
+        </nav>
+        <main class="max-w-xl mx-auto p-5">
+            <p class="text-sm text-gray-500 mb-8 text-center">點擊相簿卡片查看各拍攝者的精彩回憶。</p>
+            <div id="albumList" class="flex flex-col gap-5"></div>
+        </main>
+    </div>
+
+    <script>
+        // --- 1. 配置順序與封面指定 ---
+        const ALBUM_CONFIGS = [
+            { 
+                id: "xiamen-family", 
+                name: "廈門全家福", 
+                desc: "",
+                // 💡 可以在這裡手動指定封面要哪四張 (需與 media.json 中的 url 相同)
+                //previews: ["001_20260106_232106.jpg", "020_20260106_232107.jpg", "006_20260106_232106.jpg", "021_20260106_232107.jpg"] 
+                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
+            },
+            { 
+                id: "harbin-hai", 
+                name: "哈爾濱・海 & 馨", 
+                desc: "",
+                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
+            },
+                        { 
+                id: "harbin-gang", 
+                name: "哈爾濱・綱", 
+                desc: "",
+                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
+            },
+                                    { 
+                id: "harbin-yan", 
+                name: "哈爾濱・言",
+                desc: "",
+                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
+            },
+                                                { 
+                id: "harbin-wei", 
+                name: "哈爾濱・薇", 
+                desc: "",
+                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
+            },
+                                                            { 
+                id: "harbin-jeff", 
+                name: "哈爾濱・衡", 
+                desc: "",
+                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
+            },
+                                                                        { 
+                id: "harbin-vivi", 
+                name: "哈爾濱・衡 & vivi", 
+                desc: "",
+                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
+            },
+                                                                                    { 
+                id: "harbin-xu", 
+                name: "哈爾濱・導遊小徐", 
+                desc: "",
+                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
+            },
+            {
+
+                id: "xiamen-hai_jeff", 
+                name: "廈門・海&衡", 
+                desc: "",
+                previews: null // 若設為 null，程式會隨機從相簿抽 4 張當封面
+            }
+
+        ];
+
+        function renderAlbums() {
+            const container = document.getElementById('albumList');
+            container.innerHTML = '';
+            ALBUM_CONFIGS.forEach(conf => {
+                const card = document.createElement('a');
+                card.className = 'album-card';
+                card.href = `albums/${conf.id}/album.html`;
+                card.innerHTML = `
+                    <div id="grid-${conf.id}" class="preview-box">
+                        <div class="col-span-2 row-span-2 flex items-center justify-center text-gray-600 text-[10px]">載入中</div>
+                    </div>
+                    <div class="info-content">
+                        <h2 class="text-lg font-bold text-white mb-1">${conf.name}</h2>
+                        <p class="text-xs text-gray-500 mb-3 truncate">${conf.desc}</p>
+                        <div class="flex items-center justify-between">
+                            <span id="count-${conf.id}" class="text-[10px] font-bold px-3 py-1 rounded-full bg-white/5 text-gray-500 transition-all">讀取中...</span>
+                            <span class="text-[14px] font-bold text-[#0071e3]">進入相簿 →</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+                loadAlbumData(conf); 
+            });
+        }
+
+        async function loadAlbumData(conf) {
+            const gridEl = document.getElementById(`grid-${conf.id}`);
+            const countEl = document.getElementById(`count-${conf.id}`);
+            const base = `albums/${conf.id}`;
+            try {
+                const res = await fetch(`./${base}/media.json?t=${Date.now()}`);
+                const data = await res.json();
+                const imgs = data.images || [];
+                const vids = data.videos || [];
+                countEl.textContent = `${imgs.length} 照片｜${vids.length} 影片`;
+                countEl.style.backgroundColor = '#0071e3';
+                countEl.style.color = '#ffffff';
+
+                let displayImgs = [];
+                if (conf.previews && conf.previews.length > 0) {
+                    // 模式 A: 使用手動指定的圖片
+                    displayImgs = conf.previews.slice(0, 4);
+                } else {
+                    // 模式 B: 隨機抽樣 (Shuffle & Pick 4)
+                    displayImgs = [...imgs].sort(() => 0.5 - Math.random()).slice(0, 4).map(i => i.url);
+                }
+
+                if (displayImgs.length > 0) {
+                    gridEl.innerHTML = displayImgs.map(url => `<img src="${base}/images/${url}">`).join('');
+                } else {
+                    gridEl.innerHTML = '<div class="col-span-2 row-span-2 flex items-center justify-center text-gray-600 text-xs">無內容</div>';
+                }
+            } catch (err) {
+                countEl.textContent = "Error";
+            }
+        }
+
+        // 雪花特效 (省略以節省空間，邏輯不變)
+        const canvas = document.getElementById('snowCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, snowflakes = [];
+        function initSnow() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; snowflakes = Array.from({length: 80}, () => ({ x: Math.random() * width, y: Math.random() * height, r: Math.random() * 2 + 1, v: Math.random() * 0.8 + 0.5, o: Math.random() * 0.5 + 0.3 })); }
+        function updateSnow() { ctx.clearRect(0,0,width,height); snowflakes.forEach(s => { s.y += s.v; if (s.y > height) s.y = -10; ctx.fillStyle = `rgba(255,255,255,${s.o})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill(); }); requestAnimationFrame(updateSnow); }
+        window.onload = () => { initSnow(); updateSnow(); renderAlbums(); };
+        window.onresize = initSnow;
+    </script>
+</body>
+</html>

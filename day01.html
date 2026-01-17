@@ -1,0 +1,2208 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DAY1</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'night-bg': '#0A0C12',
+            'card-bg': '#1C1C1E',
+            'accent-blue': '#0071e3',
+            'muted': '#86868b',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root{
+      --bg:#0a0c12;
+      --text: #f5f5f5;
+      --muted:#9d9caa;
+      --line: rgba(255, 255, 255, 0.1);
+      --card: #141414;
+      --shadow: 0 8px 24px rgba(0,0,0,.06);
+      --radius: 24px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* --- ✅ 雪花畫布 CSS 修正 --- */
+    #snowCanvas {
+      position: fixed; 
+      top: 0; 
+      left: 0;
+      width: 100%; 
+      height: 100%; 
+      z-index: 17; /* 放在背景之上，內容之下 */
+      pointer-events: none !important;
+      opacity: 0.8;
+    }
+.topbar, .anchors, .feed{
+  position: relative;
+  z-index: 10;           /* ✅ 內容全部在上面 */
+}
+
+    
+    /* Topbar */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10, 12, 18, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar-inner {
+      max-width: 650px; margin: 0 auto;
+      padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .back-btn {
+      color: var(--text); text-decoration: none; font-size: 14px;
+      background: rgba(255,255,255,0.05); padding: 8px 16px;
+      border-radius: 99px; border: 1px solid var(--line);
+    }
+    .back{
+      text-decoration:none;
+      color: var(--text);
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      font-size: 13px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, #007aff 0%, #0051d7 100%);
+    }
+    .back:hover{ background: #f7f7f7; }
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      text-align:right;
+    }
+    .title h1{
+      margin:0;
+      font-size: 14px;
+      letter-spacing:.2px;
+      font-weight: 800;
+    }
+    .title .meta{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .hint{
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 12px 14px 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+/* 播放提示層：負責黑圈背景 */
+.play-hint-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  background: rgba(0, 0, 0, 0.45); /* 稍微透明的黑 */
+  backdrop-filter: blur(4px);    /* 霧面效果，更有質感 */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;          /* 點擊穿透：點到箭頭等於點到影片 */
+  transition: opacity 0.3s ease;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+}
+
+/* 經典三角形 */
+.play-arrow {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 12px 0 12px 20px;
+  border-color: transparent transparent transparent #ffffff;
+  margin-left: 4px; /* 修正視覺中心 */
+}
+
+/* 🎬 當影片播放時，隱藏箭頭 */
+.video-container.video-playing .play-hint-overlay {
+  opacity: 0;
+  visibility: hidden;
+}
+
+    /* --- ✅ Anchors / Chips 樣式優化區 --- */
+    .anchors {
+      max-width: 650px; margin: 20px auto 0; padding: 0 16px;
+      display: flex; gap: 8px; flex-wrap: wrap; position: relative; z-index: 10;
+    }
+
+    .chip {
+      display: inline-flex; align-items: center; padding: 6px 12px;
+      border-radius: 99px; font-size: 12px; font-weight: 600;
+      text-decoration: none; transition: all 0.2s ease;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05); color: #888;
+    }
+
+    /* 類型 1: 時間 (日期) - 藍色發光 */
+    .chip-day {
+      background: rgba(0, 112, 227, 0.15);
+      border-color: rgba(0, 112, 227, 0.4);
+      color: #70baff;
+    }
+    .chip-day::before { content: "●"; margin-right: 6px; font-size: 8px; }
+
+    /* 類型 2: 地點 - 翠綠色 */
+    .chip-loc {
+      background: rgba(48, 209, 88, 0.1);
+      border-color: rgba(48, 209, 88, 0.3);
+      color: #63da7a;
+    }
+
+    /* 類型 3: 特定活動 - 紫色細線 */
+    .chip-activity {
+      background: transparent;
+      border: 1px dashed rgba(191, 90, 242, 0.5);
+      color: #d08df6;
+    }
+
+    /* 類型 4: 高亮/情感 - 暖橘色 */
+    .chip-highlight {
+      background: linear-gradient(to right, rgba(255, 218, 10, 0.2), transparent);
+      border-color: rgba(255, 239, 10, 0.479);
+      color: #fad457;
+    }
+
+    .chip:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.2);
+      border-color: rgba(255,255,255,0.5);
+    }
+
+    /* feed */
+    .feed {
+      max-width: 650px; margin: 0 auto;
+      padding: 20px 16px 80px;
+      display: flex; flex-direction: column; gap: 24px;
+      position: relative; z-index: 10;
+    }
+
+/* --- ✅ 最終整合版頭像系統 --- */
+
+/* ✅ 強化後的最終整合版 */
+.avatar, .c-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  position: relative;
+  /* 🔹 使用 background 並確保變數優先 */
+  background: var(--avatar-bg, #333) !important; 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* 留言頭像稍微縮小，讓排版更有層次感 */
+.c-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+}
+
+/* 自動抓取 HTML 上的 data-name 填入圓圈 */
+.avatar::before, .c-avatar::before {
+  content: attr(data-name);
+  display: block;
+}
+
+/* 2. 人物顏色綁定（全域通用） */
+[data-who="dad"] { --avatar-bg: #0071e3; }  /* 爸 */
+[data-who="mom"] { --avatar-bg: #ff3b30; }  /* 媽 */
+[data-who="bro"] { --avatar-bg: #339c4d; }  /* 哥 */
+[data-who="me"]  { --avatar-bg: #ff9500; }  /* 妹 */
+[data-who="di"]  { --avatar-bg: #5856d6; }  /* 弟 */
+[data-who="vi"]  { --avatar-bg: #af52de; }  /* Vi */
+[data-who="yan"] { --avatar-bg: #19c0c0; }  /* 言 */
+[data-who="xu"]  { --avatar-bg: #949491; }  /* 徐 */
+
+    /* Post Card */
+    .post {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    .post-head { padding: 20px 20px 12px; display: flex; gap: 14px; }
+    .avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--accent-blue); flex-shrink: 0;
+    }
+    .place { font-size: 16px; font-weight: 700; margin: 0; color: #fff; }
+    .desc { margin: 8px 0 0; color: #d1d1d6; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+    
+
+    .head-text{ flex:1; min-width: 0; }
+    .place{
+      font-size: 13px;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing:.2px;
+    }
+    .desc{
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height:1.65;
+      white-space: pre-wrap;
+    }
+
+   /* Media Styles */
+    .media { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+    .media-img {
+      width: 100%; border-radius: 16px; border: 1px solid var(--line);
+      background: #2c2c2e; cursor: zoom-in; object-fit: cover;
+    }
+    .media-video {
+      width: 100%; border-radius: 16px; background: #000;
+      max-height: 500px; object-fit: contain;
+    }
+
+    /* ---------------------------
+      NEW: Mixed layouts
+    --------------------------- */
+
+    /* 1) 橫幅轉場（更像社群的“呼吸”） */
+    .media-banner{
+      aspect-ratio: 21/9;
+      object-fit: cover;
+    }
+
+    /* 2) 雙欄 Grid（可放 2～4 張） */
+    .media-grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .media-grid2 img{
+      width:100%;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      background:#fafafa;
+      display:block;
+      cursor: zoom-in;
+      object-fit: cover;
+      aspect-ratio: 1 / 1; /* 正方形更像社群 */
+    }
+
+    /* 3) 左右滑相簿（一次 10 張 OK） */
+    .media-carousel{
+      position: relative;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      overflow: hidden;
+      background: #0a0c12;
+    }
+
+    .carousel-track{
+      display:flex;
+      gap: 10px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding: 10px;
+      scrollbar-width: none; /* Firefox */
+    }
+    .carousel-track::-webkit-scrollbar{ display:none; } /* Chrome/Safari */
+
+    .carousel-item{
+      flex: 0 0 78%;
+      scroll-snap-align: center;
+      scroll-snap-stop: always;
+    }
+    .carousel-item img{
+      width: 100%;
+      height: auto;
+      display:block;
+      border-radius: 12px;
+      border:1px solid var(--line);
+      background:#0a0c12;
+      cursor: zoom-in;
+      object-fit: cover;
+      aspect-ratio: 4 / 5; /* 很社群的比例 */
+    }
+
+    /* 讓使用者知道可以左右滑的小提示 */
+    .carousel-hint{
+      position:absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 12px;
+      color: rgba(0,0,0,.62);
+      background: rgba(255,255,255,.86);
+      border:1px solid var(--line);
+      padding: 6px 10px;
+      border-radius: 999px;
+      pointer-events:none;
+    }
+
+    /* dots（可選，但很社群） */
+    .carousel-dots{
+      display:flex;
+      gap: 6px;
+      justify-content:center;
+      padding: 10px 10px 12px;
+      border-top: 1px solid var(--line);
+      background: #0a0c12;
+    }
+    .dot{
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #585858;
+    }
+    .dot.active{ background: #cfd4d8; }
+
+    /* small screens */
+    @media (max-width: 520px){
+
+      .title{ display:none; }
+      video.media-video{ max-height: 440px; }
+      .carousel-item{ flex-basis: 86%; }
+    }
+
+
+/* --- Album Share Card (Threads-ish) --- */
+.album-card{
+  display: flex !important;
+  position: relative;
+  pointer-events: auto !important; /* 強制開啟點擊 */
+  cursor: pointer;
+  gap:12px;
+  align-items:stretch;
+  z-index:15;
+  padding:12px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:#fff;
+  text-decoration:none; /* 去掉底線 */
+  color: var(--text);   /* 去掉藍字 */
+  transition: background .15s ease, transform .08s ease, box-shadow .15s ease;
+}
+.album-card:hover{
+  background:#f7f7f7;
+  box-shadow: 0 10px 24px rgba(0,0,0,.06);
+}
+.album-card:active{
+  transform: translateY(1px);
+}
+
+.album-preview{
+  width: 92px;
+  height: 92px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #fafafa;
+  overflow:hidden;
+  flex: 0 0 auto;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+}
+.album-preview img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.album-body{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:6px;
+}
+
+.album-title{
+  margin:0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing:.2px;
+  line-height: 1.35;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.album-sub{
+  margin:0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  line-clamp: 2;         /* 新增這一行：定義標準屬性 */
+  -webkit-box-orient: vertical;
+  overflow:hidden;
+}
+
+.album-meta{
+  margin-top:2px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.album-pill{
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background:#fff;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.album-cta{
+  flex: 0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width: 34px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+@media (max-width:520px){
+  .album-preview{ width:84px; height:84px; }
+}
+
+
+
+
+    /* -------- Lightbox -------- */
+    .lb{
+      position: fixed;
+      inset: 0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background: rgba(0,0,0,.74);
+      z-index: 999;
+      padding: 18px;
+    }
+    .lb[aria-hidden="false"]{ display:flex; }
+
+    .lb-inner{
+      max-width: min(980px, 100%);
+      max-height: min(92vh, 100%);
+      width: 100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position: relative;
+    }
+    .lb-img{
+      max-width: 100%;
+      max-height: 92vh;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 30px 90px rgba(0,0,0,.55);
+      cursor: zoom-out;
+      background: rgba(0,0,0,.2);
+    }
+    .lb-close{
+      position:absolute;
+      top: -8px;
+      right: -8px;
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.35);
+      color: rgba(255,255,255,.9);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      font-size: 18px;
+      line-height:1;
+      backdrop-filter: blur(8px);
+    }
+    .lb-caption{
+      position:absolute;
+      left: 0;
+      right: 0;
+      bottom: -10px;
+      transform: translateY(100%);
+      text-align:center;
+      color: rgba(255,255,255,.8);
+      font-size: 12px;
+      padding: 10px 8px;
+      user-select:none;
+    }
+
+
+/* -------- Comments (always expanded) -------- */
+.post-foot{
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+  background: #0a0c12;
+}
+
+.comments-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.comments-title .count{
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.comments{
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+}
+
+.comment{
+  display:flex;
+  gap: 10px;
+  align-items:flex-start;
+}
+
+
+
+.c-body{
+  min-width: 0;
+  flex: 1;
+}
+
+.c-meta{
+  display:flex;
+  align-items:baseline;
+  gap: 8px;
+  flex-wrap:wrap;
+  line-height: 1.3;
+}
+
+.c-name{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+
+.c-time{
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.c-text{
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+/* 回覆縮排（可選） */
+.comment.reply{
+  margin-left: 38px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(0,0,0,.06);
+}
+
+/* 小螢幕更緊湊 */
+@media (max-width:520px){
+  .post-foot{ padding: 12px 12px 14px; }
+  .comment.reply{ margin-left: 34px; }
+}
+
+
+
+
+  </style>
+</head>
+
+<body>
+
+  <canvas id="snowCanvas"></canvas>
+
+  <div class="topbar">
+    <div class="topbar-inner">
+      <a class="back" href="home.html" aria-label="回到地圖首頁">← 回地圖首頁</a>
+      <div class="title">
+        <h1>DAY1 廈門 → 哈爾濱</h1>
+        <div class="meta">雙欄 / 橫幅 / 左右滑相簿｜圖片可放大｜影片滑走暫停</div>
+      </div>
+    </div>
+  </div>
+
+  <!--<p class="hint">
+    你要的「一篇可發 10 張、左右滑」已加上：相簿區塊用手指左右滑即可。<br/>
+    圖片都能點開放大；影片不自動播放、滑走會暫停、滑到附近才載入。
+  </p>
+-->
+
+  <nav class="anchors">
+
+    
+    <a  class="chip chip-highlight">聖索菲亞教堂</a>
+    <a  class="chip chip-highlight">中央大街</a>
+    <a  class="chip chip-highlight">-19°~-27°</a>
+  </nav>
+
+  <main class="feed">
+
+    <!-- Post 1 -->
+    <section class="post" id="section-start">
+      <div class="post-head">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="head-text">
+           
+            <span class="c-time">2025/12/26 05:52</span>
+          <p class="desc">司機到了喔</p>
+        </div>
+      </div>
+</section>
+
+
+    <!-- Post 1 -->
+    <section class="post" id="section-start">
+      <div class="post-head">
+        <div class="avatar" data-who="dad" data-name="爸" aria-hidden="true"></div>
+        <div class="head-text">
+           
+            <span class="c-time">2025/12/26 09:04</span>
+          <p class="desc">來～大家看我！</p>
+        </div>
+      </div>
+
+      <div class="media">
+        <!-- 單張大圖（主鏡頭） -->
+        <img class="media-img"
+             src="albums/harbin-hai/images/3.webp"
+             loading="lazy" decoding="async"
+             alt="街景"
+             data-lightbox
+             data-caption="中央大街｜第一眼" />
+
+
+      </div>
+
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">4 則</span>
+    </div>
+
+    <div class="comments">
+
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+            
+            <span class="c-time">2025/12/26 10:32</span>
+          </div>
+          <p class="c-text">飛機餐</p>
+                          <div class="carousel-track" data-track>          
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/0_3.webp" >
+            </div>
+        </div>
+
+      <div class="comment" data-who="mom">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+      
+            <span class="c-time">2025/12/26 10:50</span>
+          </div>
+          <p class="c-text">粥有點淡，但是加了"撒子"滿好吃！滷蛋也好吃！～</p>
+        </div>
+      </div>
+
+      <div class="comment reply" data-who="me">
+        <div class="avatar" data-who="bro" data-name="哥" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 10:51</span>
+          </div>
+          <p class="c-text">像沙琪瑪</p>
+        </div>
+      </div>
+    
+    
+    <p class="c-text"></p>
+ <p class="c-text"></p>
+
+      <div class="comment reply" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 10:51</span>
+          </div>
+          <p class="c-text">也像油條</p>
+        </div>
+      </div>
+  
+  </div>
+
+    </section>
+
+
+
+
+
+    <!-- Post 2 -->
+    <section class="post" id="section-start">
+      <div class="media">
+      <div class="post-head">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="head-text">
+           
+            <span class="c-time">2025/12/26 12:29</span>
+          <p class="desc">到哈爾濱啦!~</p>
+        </div>
+      </div>
+
+        <div class="video-container" style="position: relative; width: 100%; cursor: pointer;">
+          <div class="play-hint-overlay"><div class="play-arrow"></div></div>
+          <video class="media-video" controls playsinline preload="metadata" loading="lazy" data-lazyvideo>
+            <source data-src="albums/harbin-wei/videos/11_1.mp4#t=0.1" type="video/mp4" />
+          </video>
+        </div>
+        </div>
+        </div>
+        </div>
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">2 則</span>
+    </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+            
+            <span class="c-time">2025/12/26 12:31</span>
+          </div>
+          <p class="c-text">厚衣服穿起來!</p>
+        </div>
+      </div>
+          <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="mom" data-name="媽" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+            
+            <span class="c-time">2025/12/26 12:31</span>
+          </div>
+          <p class="c-text">發熱鞋墊在我這哦!需要就找我拿</p>
+        </div>
+      </div>
+
+
+    </section>
+
+
+    <!-- Post 2 -->
+    <section class="post" id="section-start">
+      <div class="post-head">
+        <div class="avatar" data-who="xu" data-name="導遊"  aria-hidden="true"></div>
+        <div class="head-text">
+            
+            <span class="c-time">2025/12/26 13:00</span>
+          <p class="desc">請大家稍等一下，我們臨時調到了更好的車</p>
+        </div>
+      </div>
+
+
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">3 則</span>
+    </div>
+
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="dad" data-name="爸" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+            
+            <span class="c-time">2025/12/26 13:00</span>
+          </div>
+          <p class="c-text">OK!麻煩小徐妳了!</p>
+        </div>
+      </div>
+
+    
+    <div class="comments">
+
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="bro" data-name="哥" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+            
+            <span class="c-time">2025/12/26 13:02</span>
+          </div>
+          <p class="c-text"></p>
+                          <div class="carousel-track" data-track>          
+            <div class="carousel-item">
+              <img src="albums/harbin-gang/images/harbin_1.webp" >
+            </div>
+        </div>
+      
+      </div>
+        </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+            
+            <span class="c-time">2025/12/26 13:02</span>
+          <p class="c-text"></p>
+                          <div class="carousel-track" data-track>          
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/1.webp" >
+            </div>
+      </div>
+
+
+   
+      </div>
+    </section>
+
+
+
+    <!-- Post 3：左右滑相簿（一次 10 張的那種） -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="avatar" data-who="dad" data-name="爸" aria-hidden="true"></div>
+        <div class="head-text">
+            
+            <span class="c-time">2025/12/26 13:07</span>
+            <p class="desc">機場外走走看看衣服夠不夠保暖</p>
+            
+        </div>
+      </div>
+
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/4.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                        <div class="carousel-item">
+              <img src="albums/harbin-hai/images/53.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+            <div class="carousel-item">
+              <img src="albums/harbin-hai/images/54.webp" loading="lazy" decoding="async"
+                   alt="街景 02" data-lightbox data-caption="街景 02" />
+            </div>
+                        <div class="carousel-item">
+              <img src="albums/harbin-hai/images/55.webp" loading="lazy" decoding="async"
+                   alt="街景 02" data-lightbox data-caption="街景 02" />
+            </div>
+
+            <!-- ...繼續加 -->
+          </div>
+
+          <div class="carousel-dots" data-dots></div>
+       
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">2 則</span>
+    </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+            
+            <span class="c-time">2025/12/26 13:07</span>
+          </div>
+          <p class="c-text">感覺好像還OK哦！沒有想像中的冷</p>
+        </div>
+      </div>
+          <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="mom" data-name="媽" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+            
+            <span class="c-time">2025/12/26 13:07</span>
+          </div>
+          <p class="c-text">但是地板很滑，還沒買雪靴前大家要小心</p>
+        </div>
+      </div>
+
+
+    </section>
+
+      </div>
+    </section>
+
+
+
+    <!-- Post 3：左右滑相簿（一次 10 張的那種） -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="dad" data-name="爸" aria-hidden="true"></div>
+        <div class="head-text">
+            
+            <span class="c-time">2025/12/26 13:38</span>
+            <p class="desc">上車!!</p>
+            
+        </div>
+      </div>
+
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-hai/images/58.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                        <div class="carousel-item">
+              <img src="albums/harbin-hai/images/57.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+            <div class="carousel-item">
+              <img src="albums/harbin-hai/images/59.webp" loading="lazy" decoding="async"
+                   alt="街景 02" data-lightbox data-caption="街景 02" />
+            </div>
+    
+
+            <!-- ...繼續加 -->
+          </div>
+
+          <div class="carousel-dots" data-dots></div>
+        </div>
+
+
+      </div>
+    </section>
+
+
+
+    <!-- Post 4 -->
+    <section class="post" id="section-start">
+      <div class="post-head">
+        <div class="avatar" data-who="xu" data-name="導遊" aria-hidden="true"></div>
+        <div class="head-text">
+           
+            <span class="c-time">2025/12/26 14:24</span>
+          <p class="desc">我先請司機載大家去吃飯!東北有名的鐵鍋燉!</p>
+        </div>
+      </div>
+
+
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">4 則</span>
+    </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+            
+            <span class="c-time">2025/12/26 14:36</span>
+          <p class="c-text"></p>
+                          <div class="carousel-track" data-track>          
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/15.webp" >
+            </div>
+      </div>
+</div>
+</div>
+</div>
+      
+      <div class="comment" data-who="mom">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+      
+            <span class="c-time">2025/12/26 14:49</span>
+          </div>
+          <p class="c-text">我錯了......</p>
+                                    <div class="carousel-track" data-track>          
+            <div class="carousel-item">
+              <img src="albums/harbin-wei/images/12.webp" >
+          
+        </div>
+      </div>
+</div>
+</div>
+</div>
+
+
+          <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+            
+            <span class="c-time">2025/12/26 15:27</span>
+          </div>
+          <p class="c-text"></p>
+                <div class="carousel-item">
+          <div class="video-container" style="position: relative; width: 100%; cursor: pointer;">
+            <div class="play-hint-overlay"><div class="play-arrow"></div></div>
+            <video class="media-video" controls playsinline preload="metadata" loading="lazy" data-lazyvideo>
+                           <source data-src="albums/harbin-wei/videos/13_1.mp4#t=0.1" type="video/mp4" />
+          
+        </div></div></div></div> 
+      <div class="comment reply" data-who="me">
+        <div class="avatar" data-who="bro" data-name="哥" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 15:35</span>
+          </div>
+          <p class="c-text">貼餅吃起來像蛋白打發</p>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- Post 3：左右滑相簿（一次 10 張的那種） -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="head-text">
+            
+            <span class="c-time">2025/12/26 16:17</span>
+            <p class="desc">吃飽喝足出發去教堂~!天色暗好快!</p>
+            
+        </div>
+      </div>
+
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-wei/images/21.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                        <div class="carousel-item">
+              <img src="albums/harbin-yan/images/17.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+ 
+    
+
+            <!-- ...繼續加 -->
+          </div>
+
+          <div class="carousel-dots" data-dots></div>
+        </div>
+
+
+      </div>
+    </section>
+
+
+
+        <!-- Post 6 -->
+    <section class="post" id="section-start">
+      <div class="post-head">
+        <div class="avatar" data-who="xu" data-name="導遊" aria-hidden="true"></div>
+        <div class="head-text">
+         
+            <span class="c-time">2025/12/26 16:49</span>
+          <p class="desc">大家會冷的話，我帶大家先去添購衣服好嗎？</p>
+                      <div class="carousel-item">
+              <img src="albums/harbin-xu/images/3.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+        </div>
+      </div>
+
+
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">6 則</span>
+    </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="dad" data-name="爸" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 16:50</span>
+          </div>
+          <p class="c-text">好</p>
+        </div>
+      </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="mom" data-name="媽" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 16:50</span>
+          </div>
+          <p class="c-text">好</p>
+        </div>
+      </div>
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="bro" data-name="哥" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 16:50</span>
+          </div>
+          <p class="c-text">好</p>
+        </div>
+      </div>
+
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 16:50</span>
+          </div>
+          <p class="c-text">好</p>
+        </div>
+      </div>
+
+          <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 16:50</span>
+          </div>
+          <p class="c-text">好</p>
+        </div>
+      </div>
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 16:50</span>
+          </div>
+          <p class="c-text">好</p>
+        </div>
+      </div>
+
+
+      </div>
+
+ </section>
+
+
+
+    <!-- Post 3：左右滑相簿（一次 10 張的那種） -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="head-text">
+            
+            <span class="c-time">2025/12/26 16:52</span>
+            <p class="desc">衣服好多!!人也好多!!</p>
+            
+        </div>
+      </div>
+
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-hai/images/72.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                        <div class="carousel-item">
+              <img src="albums/harbin-wei/images/23.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+           
+          </div>
+
+          <div class="carousel-dots" data-dots></div>
+
+
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">6 則</span>
+    </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="bro" data-name="哥" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 17:30</span>
+          </div>
+          <p class="c-text">我結帳完出來啦</p>
+        </div>
+      </div>
+
+      <div class="comment reply" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 17:31</span>
+          </div>
+          <p class="c-text">也太快了吧!</p>
+   
+         
+        </div>
+        
+      </div>
+      <div class="comment reply" data-who="me">
+        <div class="avatar" data-who="bro" data-name="哥" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 17:43</span>
+          </div>
+          <p class="c-text">壓力測試10分鐘，應該是沒問題</p>
+      </div>
+      </div>
+      <div class="comment reply" data-who="me">
+        <div class="avatar" data-who="ma" data-name="媽" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 18:01</span>
+          </div>
+          <p class="c-text">你有買羽絨內長褲嗎？要我幫你買一件嗎？</p>
+      </div>
+            </div>
+      <div class="comment reply" data-who="me">
+        <div class="avatar" data-who="bro" data-name="哥" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 18:04</span>
+          </div>
+          <p class="c-text">不用吧</p>
+      </div>
+                 </div>
+      <div class="comment reply" data-who="me">
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 18:06</span>
+          </div>
+          <p class="c-text"></p>
+                      <div class="carousel-item">
+              <img src="albums/harbin-yan/images/21_1.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+      </div>
+    </section>
+
+
+    <!-- Post 3：左右滑相簿（一次 10 張的那種） -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="dad" data-name="爸" aria-hidden="true"></div>
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="head-text">
+            
+            <span class="c-time">2025/12/26 19:06</span>
+            <p class="desc"></p>
+            
+        </div>
+      </div>
+
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/21_2.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                <div class="carousel-item">
+              <img src="albums/harbin-yan/images/21_4.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                        <div class="carousel-item">
+              <img src="albums/harbin-wei/images/26.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                <div class="carousel-item">
+              <img src="albums/harbin-hai/images/74.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+ 
+    
+
+            <!-- ...繼續加 -->
+          </div>
+
+          <div class="carousel-dots" data-dots></div>
+        </div>
+
+
+      </div>
+    </section>
+
+
+    <!-- Post 3：左右滑相簿（一次 10 張的那種） -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="head-text">
+            
+            <span class="c-time">2025/12/26 19:33</span>
+            <p class="desc"></p>
+            
+        </div>
+      </div>
+
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/21_5.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                        <div class="carousel-item">
+              <img src="albums/harbin-yan/images/21_6.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                         <div class="carousel-item">
+              <img src="albums/harbin-yan/images/21_8.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+    
+          </div>
+
+          <div class="carousel-dots" data-dots></div>
+      
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">1 則</span>
+    </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="mom" data-name="媽" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 19:34</span>
+          </div>
+          <p class="c-text">大採購~~</p>
+        </div>
+
+
+
+      </div>
+    </section>
+
+
+    <!-- Post 5 -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="bro" data-name="哥" aria-hidden="true"></div>
+
+        <div class="head-text">
+           
+            <span class="c-time">2025/12/25 20:40</span>
+             <p class="desc">松花江邊，自拍棒好用！</p>
+            
+        </div>
+      </div>
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-gang/images/harbin_7.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+            <div class="carousel-item">
+              <img src="albums/harbin-gang/images/harbin_8.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                         <div class="carousel-item">
+              <img src="albums/harbin-gang/images/harbin_11.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-gang/images/harbin_23.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-gang/images/harbin_27.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-gang/images/harbin_28.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-gang/images/harbin_30.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+              <div class="carousel-item">
+              <img src="albums/harbin-gang/images/harbin_36.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>           
+              <div class="carousel-item">
+              <img src="albums/harbin-gang/images/harbin_38.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>   
+    </div>
+    <div class="carousel-dots" data-dots></div>
+  </div>
+</div>
+    </section>
+
+
+    <!-- Post 5 -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+
+        <div class="avatar" data-who="dad" data-name="爸" aria-hidden="true"></div>
+        <div class="head-text">
+           
+            <span class="c-time">2025/12/25 20:50</span>
+             <p class="desc">松花江</p>
+            
+        </div>
+      </div>
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-hai/images/87.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+            <div class="carousel-item">
+              <img src="albums/harbin-hai/images/89.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                         <div class="carousel-item">
+              <img src="albums/harbin-hai/images/97.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+               <div class="carousel-item">
+              <img src="albums/harbin-hai/images/102.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-hai/images/104.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-hai/images/106.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-hai/images/121.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+
+
+    </div>
+    <div class="carousel-dots" data-dots></div>
+  </div>
+</div>
+    </section>
+
+
+    <!-- Post 5 -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+
+        <div class="head-text">
+           
+            <span class="c-time">2025/12/25 21:00</span>
+             <p class="desc">松花江上</p>
+            
+        </div>
+      </div>
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/33.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/34.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                         <div class="carousel-item">
+              <img src="albums/harbin-yan/images/35.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-yan/images/36.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-yan/images/39.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-yan/images/41.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-yan/images/42.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-yan/images/30_2.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+              <div class="carousel-item">
+              <img src="albums/harbin-yan/images/30_1.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>           
+    </div>
+    <div class="carousel-dots" data-dots></div>
+  </div>
+</div>
+    </section>
+
+
+    <!-- Post 5 -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+
+        <div class="head-text">
+           
+            <span class="c-time">2025/12/25 21:02</span>
+             <p class="desc">松花江邊合照</p>
+            
+        </div>
+      </div>
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-jeff/images/0_2.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+            <div class="carousel-item">
+              <img src="albums/harbin-jeff/images/0_11.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+                         <div class="carousel-item">
+              <img src="albums/harbin-jeff/images/0_16.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-jeff/images/0_24.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+      
+    </div>
+    <div class="carousel-dots" data-dots></div>
+  </div>
+</div>
+    </section>
+
+
+
+
+
+
+    <!-- Post 5 -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+
+        <div class="head-text">
+           
+            <span class="c-time">2025/12/25 21:24</span>
+             <p class="desc">衡在買煙囪捲</p>
+            
+        </div>
+      </div>
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/45.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/46.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+          </div>
+
+          <div class="carousel-dots" data-dots></div>
+      
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">3 則</span>
+    </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 21:29</span>
+          </div>
+          <p class="c-text">好吃!</p>
+        </div>
+      </div>
+        
+
+        <div class="comment" data-who="mom">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+      
+            <span class="c-time">2025/12/26 21:30</span>
+          </div>
+          <p class="c-text">好吃!</p>
+        </div>
+</div>
+                <div class="comment" data-who="mom">
+        <div class="avatar" data-who="mom" data-name="媽" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+      
+            <span class="c-time">2025/12/26 21:31</span>
+          </div>
+          <p class="c-text">真的好吃!</p>
+        </div>
+    </section>    
+
+
+    <!-- Post 5 -->
+    <section class="post" id="section-street">
+      <div class="post-head">
+        <div class="avatar" data-who="yan" data-name="言" aria-hidden="true"></div>
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="head-text">
+           
+            <span class="c-time">2025/12/25 21:50</span>
+             <p class="desc"></p>
+            
+        </div>
+      </div>
+      <div class="media">
+        <div class="media-carousel" data-carousel>
+          <div class="carousel-hint">左右滑 →</div>
+
+          <div class="carousel-track" data-track>
+            <!-- 你可以放 10～20 張都沒問題 -->
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/47.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+            <div class="carousel-item">
+              <img src="albums/harbin-yan/images/48.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>
+             <div class="carousel-item">
+              <img src="albums/harbin-wei/images/28.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>   
+             <div class="carousel-item">
+              <img src="albums/harbin-wei/images/29.webp" loading="lazy" decoding="async"
+                   alt="街景 01" data-lightbox data-caption="街景 01" />
+            </div>                    
+          </div>
+
+          <div class="carousel-dots" data-dots></div>
+      
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">2 則</span>
+    </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/26 21:58</span>
+          </div>
+          <p class="c-text">爸隨機找的店也好好吃!!!</p>
+        </div>
+      </div>
+        
+
+        <div class="comment" data-who="mom">
+        <div class="avatar" data-who="bro" data-name="哥" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+      
+            <span class="c-time">2025/12/26 22:00</span>
+          </div>
+          <p class="c-text">麻辣牛肚讚</p>
+        </div>
+</div>
+
+    </section>    
+
+
+
+
+        <!-- Post 6 -->
+    <section class="post" id="section-start">
+      <div class="post-head">
+        <div class="avatar" data-who="dad" data-name="爸" aria-hidden="true"></div>
+        <div class="head-text">
+         
+            <span class="c-time">2025/12/27 00:01</span>
+          <p class="desc">紀衡！人接到了嗎？</p>
+        </div>
+      </div>
+
+
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">3 則</span>
+    </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/27 00:09</span>
+          </div>
+          <p class="c-text">還在路上,你們先休息</p>
+        </div>
+      </div>
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="dad" data-name="爸" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/27 00:10</span>
+          </div>
+          <p class="c-text">明天早上是08:30出發嗎？</p>
+        </div>
+      </div>
+
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/27 00:12</span>
+          </div>
+          <p class="c-text">對</p>
+        </div>
+      </div>
+   
+   
+ 
+
+    </section>
+
+
+
+        <!-- Post 6 -->
+    <section class="post" id="section-start">
+      <div class="post-head">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="head-text">
+         
+            <span class="c-time">2025/12/27 01:36</span>
+          <p class="desc">有還沒睡的嗎？</p>
+        </div>
+      </div>
+
+
+  <div class="post-foot">
+    <div class="comments-title">
+      <span>留言</span>
+      <span class="count">6 則</span>
+    </div>
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/27 01:41</span>
+          </div>
+          <p class="c-text">有</p>
+        </div>
+      </div>
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/27 01:43</span>
+          </div>
+          <p class="c-text">你們要吃東西嗎?哈哈哈哈哈哈!</p>
+        </div>
+      </div>
+
+
+    <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/27 01:43</span>
+          </div>
+          <p class="c-text">我現在要叫</p>
+        </div>
+      </div>
+
+          <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/27 01:43</span>
+          </div>
+          <p class="c-text">你們要吃的話 我多教一點拿過去給你們 烤串</p>
+        </div>
+      </div>
+           <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="me" data-name="妹" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/27 01:43</span>
+          </div>
+          <p class="c-text">！不用🤣🤣🤣我們已經快睡著了😆😆😆</p>
+        </div>
+      </div>
+          <div class="comments">
+      <div class="comment" data-who="me">
+        <div class="avatar" data-who="di" data-name="弟" aria-hidden="true"></div>
+        <div class="c-body">
+          <div class="c-meta">
+           
+            <span class="c-time">2025/12/27 01:43</span>
+          </div>
+          <p class="c-text">好</p>
+        </div>
+      </div> 
+ 
+
+    </section>
+
+
+
+
+  </main>
+
+
+
+  <!-- Lightbox -->
+  <div class="lb" id="lightbox" aria-hidden="true" role="dialog" aria-label="Image viewer">
+    <div class="lb-inner">
+      <button class="lb-close" type="button" aria-label="Close">×</button>
+      <img class="lb-img" alt="" />
+      <div class="lb-caption" aria-live="polite"></div>
+    </div>
+  </div>
+
+    <script>
+    /* ✅ 雪花特效邏輯修復 */
+    const canvas = document.getElementById('snowCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, snowflakes = [];
+
+    function initSnow() {
+      width = window.innerWidth; 
+      height = window.innerHeight;
+      canvas.width = width; 
+      canvas.height = height;
+      snowflakes = Array.from({length: 80}, () => ({
+        x: Math.random() * width, 
+        y: Math.random() * height,
+        r: Math.random() * 2 + 1, 
+        v: Math.random() * 0.5 + 0.3, // 稍微慢一點比較優雅
+        o: Math.random() * 0.5 + 0.3
+      }));
+    }
+
+    function updateSnow() {
+      ctx.clearRect(0,0,width,height);
+      snowflakes.forEach(s => {
+        s.y += s.v;
+        if (s.y > height) s.y = -10;
+        ctx.fillStyle = `rgba(255,255,255,${s.o})`; 
+        ctx.beginPath(); 
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); 
+        ctx.fill();
+      });
+      requestAnimationFrame(updateSnow);
+    }
+
+    window.onresize = initSnow;
+    initSnow();
+    updateSnow();
+
+    /* 燈箱邏輯 */
+    document.addEventListener('click', e => {
+      if (e.target.hasAttribute('data-lightbox')) {
+        const lb = document.getElementById('lightbox');
+        const lbImg = document.getElementById('lbImg');
+        lbImg.src = e.target.src;
+        lb.classList.add('active');
+      }
+    });
+ 
+
+document.querySelectorAll('.media-video').forEach(video => {
+  const container = video.parentElement;
+
+  // 監聽播放事件
+  video.addEventListener('play', () => {
+    container.classList.add('video-playing');
+  });
+
+  // 監聽暫停事件（如果想讓箭頭在暫停時回來，就取消這行註解）
+  // video.addEventListener('pause', () => { container.classList.remove('video-playing'); });
+});
+
+
+
+    /* -------------------------
+      影片：真正 Lazy Load + 滑走暫停
+    ------------------------- */
+    const lazyVideos = Array.from(document.querySelectorAll('video[data-lazyvideo]'));
+
+    const videoLoadObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const video = entry.target;
+        const sources = video.querySelectorAll('source[data-src]');
+        sources.forEach(s => {
+          s.src = s.dataset.src;
+          s.removeAttribute('data-src');
+        });
+        video.load(); // 不會自動播放
+        observer.unobserve(video);
+      });
+    }, { rootMargin: '200px 0px', threshold: 0.01 });
+
+    lazyVideos.forEach(v => videoLoadObserver.observe(v));
+
+    const videoPauseObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const video = entry.target;
+        if (entry.isIntersecting) return;
+        if (!video.paused) video.pause();
+      });
+    }, { rootMargin: '0px 0px', threshold: 0.2 });
+
+    lazyVideos.forEach(v => videoPauseObserver.observe(v));
+
+    /* -------------------------
+      Lightbox：點圖片放大
+    ------------------------- */
+    const lb = document.getElementById('lightbox');
+    const lbImg = lb.querySelector('.lb-img');
+    const lbCaption = lb.querySelector('.lb-caption');
+    const lbClose = lb.querySelector('.lb-close');
+
+    function openLightbox(img) {
+      const fullSrc = img.dataset.full || img.currentSrc || img.src;
+      lbImg.src = fullSrc;
+      lbImg.alt = img.alt || '';
+      lbCaption.textContent = img.dataset.caption || '';
+      lb.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeLightbox() {
+      lb.setAttribute('aria-hidden', 'true');
+      lbImg.src = '';
+      lbCaption.textContent = '';
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('click', (e) => {
+      const t = e.target;
+
+      if (t && t.matches('img[data-lightbox]')) {
+        openLightbox(t);
+        return;
+      }
+      if (lb.getAttribute('aria-hidden') === 'false') {
+        if (t === lb || t === lbImg) closeLightbox();
+      }
+    });
+
+    lbClose.addEventListener('click', closeLightbox);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lb.getAttribute('aria-hidden') === 'false') closeLightbox();
+    });
+
+    /* -------------------------
+      NEW: Carousel dots（自動生成 + 追蹤目前頁）
+      - 不用任何套件
+    ------------------------- */
+    const carousels = Array.from(document.querySelectorAll('[data-carousel]'));
+
+    function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+    carousels.forEach(carousel => {
+      const track = carousel.querySelector('[data-track]');
+      const dotsWrap = carousel.querySelector('[data-dots]');
+      if (!track || !dotsWrap) return;
+
+      const items = Array.from(track.querySelectorAll('.carousel-item'));
+      if (items.length <= 1) return;
+
+      // create dots
+      dotsWrap.innerHTML = items.map(() => `<span class="dot"></span>`).join('');
+      const dots = Array.from(dotsWrap.querySelectorAll('.dot'));
+
+      function setActive(index){
+        dots.forEach(d => d.classList.remove('active'));
+        dots[clamp(index,0,dots.length-1)].classList.add('active');
+      }
+
+      // estimate current index based on scrollLeft
+      function update(){
+        const itemW = items[0].getBoundingClientRect().width + 10; // + gap
+        const idx = Math.round(track.scrollLeft / itemW);
+        setActive(idx);
+      }
+
+      setActive(0);
+      track.addEventListener('scroll', () => {
+        window.requestAnimationFrame(update);
+      }, { passive: true });
+
+      // dot click jump (optional but nice)
+      dots.forEach((dot, i) => {
+        dot.style.cursor = 'pointer';
+        dot.addEventListener('click', () => {
+          const item = items[i];
+          track.scrollTo({ left: item.offsetLeft - 10, behavior: 'smooth' });
+        });
+      });
+    });
+
+  </script>
+</body>
+</html>
+
+
+
+
