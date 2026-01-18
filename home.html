@@ -266,13 +266,15 @@
 .pin-thumb {
     width: 64px; height: 64px; /* 手機版建議適度縮小 */
     border-radius: 50%;
-    border: 1.5px solid rgba(255, 255, 255, 0.8) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.6) !important;
     overflow: hidden;
     padding: 2px; /* 讓照片與邊框間留出一點空隙，更有呼吸感 */
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(5px);    
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    box-shadow: 
+        0 8px 20px rgba(0, 0, 0, 0.5),
+        0 0 10px rgba(132, 212, 255, 0.3); /* 冰藍色微光 */
+    backdrop-filter: blur(8px); /* 強化玻璃感 */  
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex; align-items: center; justify-content: center;
 }
 
@@ -300,7 +302,12 @@
     opacity: 1;
     transform: translateX(-50%) translateY(-5px); /* 標籤跟著往上移動 */
 }
-
+/* 加上這個 class 供 JS 切換（可選） */
+.pin-focus .pin-thumb {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 30px var(--accent-glow) !important;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
 
 
 /* 🔴 絲滑漂浮動畫：使用 translateY 而非 margin */
@@ -901,43 +908,43 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
 
         <!-- ✅ 這裡完全維持你原本的 HTML 結構與座標 -->
         <div class="map-stage" id="mapStage">
-          <img src="images/harbin_map.jpg" alt="Harbin map">
+          <img src="images/harbin_map.webp" alt="Harbin map">
 
           <!-- Circle Thumbnail Pins -->
-          <a class="pin" data-pin="xiamen_d0" href="day00.html" style="left:26.2%; top:69.93%;">
-            <span class="pin-thumb"><img src="images/pins/Day0.jpg" alt=""></span>
+          <a class="pin" data-day="day00" data-pin="xiamen_d0" href="day00.html" style="left:26.2%; top:69.93%;">
+            <span class="pin-thumb"><img src="images/pins/Day0.webp" alt=""></span>
             <span class="pin-label">廈門 → Day0</span>
           </a>
-          <a class="pin" data-pin="sophia_d1" href="day01.html" style="left:23.38%; top:23.11%;">
-            <span class="pin-thumb"><img src="images/pins/day1.jpg" alt=""></span>
+          <a class="pin" data-day="day01" data-pin="sophia_d1" href="day01.html" style="left:28.38%; top:23.11%;">
+            <span class="pin-thumb"><img src="images/pins/Day1.webp" alt=""></span>
             <span class="pin-label">聖索菲亞教堂 → Day1</span>
           </a>
-          <a class="pin" data-pin="yabuli_d2" href="day02.html" style="left:60.05%; top:50.86%;">
-            <span class="pin-thumb"><img src="images/pins/Day2.jpg" alt=""></span>
+          <a class="pin" data-day="day02" data-pin="yabuli_d2" href="day02.html" style="left:60.05%; top:50.86%;">
+            <span class="pin-thumb"><img src="images/pins/Day2.webp" alt=""></span>
             <span class="pin-label">亞布力 → Day2</span>
           </a>
-          <a class="pin" data-pin="tutou_d3" href="day03.html" style="left: 85%; top:64.8%;">
-            <span class="pin-thumb"><img src="images/pins/Day3.jpg" alt=""></span>
+          <a class="pin" data-day="day03" data-pin="tutou_d3" href="day03.html" style="left: 85%; top:60.8%;">
+            <span class="pin-thumb"><img src="images/pins/Day3.webp" alt=""></span>
             <span class="pin-label">大禿頂子山 → Day3</span>
           </a>
-          <a class="pin" data-pin="snow_d3" href="day03.html" style="left:72.52%; top:81.62%;">
-            <span class="pin-thumb"><img src="images/pins/Day4.jpg" alt=""></span>
+          <a class="pin" data-day="day03" data-pin="snow_d3" href="day03.html" style="left:76.52%; top:75.62%;">
+            <span class="pin-thumb"><img src="images/pins/Day4.webp" alt=""></span>
             <span class="pin-label">雪鄉 → Day3</span>
           </a>
-          <a class="pin" data-pin="gallery_d4" href="day04.html" style="left:56.17%; top:78.64%;">
-            <span class="pin-thumb"><img src="images/pins/Day5.jpg" alt=""></span>
+          <a class="pin" data-day="day04" data-pin="gallery_d4" href="day04.html" style="left:56.17%; top:78.64%;">
+            <span class="pin-thumb"><img src="images/pins/Day5.webp" alt=""></span>
             <span class="pin-label">冰雪畫廊 → Day4</span>
           </a>
-          <a class="pin" data-pin="iceworld_d4" href="day04.html" style="left:10.49%; top:10.18%;">
-            <span class="pin-thumb"><img src="images/pins/Day6.jpg" alt=""></span>
+          <a class="pin" data-day="day04" data-pin="iceworld_d4" href="day04.html" style="left:13.49%; top:10.18%;">
+            <span class="pin-thumb"><img src="images/pins/Day6.webp" alt=""></span>
             <span class="pin-label">冰雪大世界 → Day4</span>
           </a>
-          <a class="pin" data-pin="centralst_d4" href="day04.html" style="left:36.8%; top:12.16%;">
-            <span class="pin-thumb"><img src="images/pins/Day7.jpg" alt=""></span>
+          <a class="pin" data-day="day04" data-pin="centralst_d4" href="day04.html" style="left:36.8%; top:12.16%;">
+            <span class="pin-thumb"><img src="images/pins/Day7.webp" alt=""></span>
             <span class="pin-label">中央大街 → Day4</span>
           </a>
-          <a class="pin" data-pin="xiamen_d5" href="day05.html" style="left:6.98%; top:73.33%;">
-            <span class="pin-thumb"><img src="images/pins/Day8.jpg" alt=""></span>
+          <a class="pin" data-day="day05" data-pin="xiamen_d5" href="day05.html" style="left:10.98%; top:50.33%;">
+            <span class="pin-thumb"><img src="images/pins/Day8.webp" alt=""></span>
             <span class="pin-label">廈門 → Day5</span>
           </a>
 
@@ -1350,6 +1357,10 @@ window.addEventListener('load', initAttackTip);
 // 在 <script> 標籤內的最後面加入：
 document.querySelectorAll('.pin').forEach(p => {
     p.addEventListener('click', function() {
+    // 先移除所有人的 active 狀態
+        document.querySelectorAll('.pin').forEach(el => el.style.zIndex = "100");
+        // 提升當前點擊者的層級
+        this.style.zIndex = "999";
         const others = document.querySelectorAll('.pin');
         const anchors = document.querySelectorAll('.anchor');
         
@@ -1364,6 +1375,49 @@ document.querySelectorAll('.pin').forEach(p => {
         }, 3000);
     });
 });
+
+document.querySelectorAll('.day-chip').forEach(chip => {
+    chip.addEventListener('click', function(e) {
+        // 1. 取得目標天數 (例如 "day01")
+        const targetDay = this.getAttribute('href').split('.')[0]; 
+        
+        const targetPins = document.querySelectorAll(`.pin[data-day="${targetDay}"]`);
+        const allPins = document.querySelectorAll('.pin');
+        const allAnchors = document.querySelectorAll('.anchor');
+
+        if (targetPins.length > 0) {
+            e.preventDefault();
+
+            // 視覺聯動：突顯目標，淡化其他
+            allPins.forEach(p => p.style.opacity = "0.2");
+            allAnchors.forEach(a => a.style.opacity = "0.2");
+
+            targetPins.forEach(p => {
+                p.style.opacity = "1";
+                p.style.zIndex = "1000";
+                // 強制觸發放大效果
+                const thumb = p.querySelector('.pin-thumb');
+                thumb.style.transform = "scale(1.5) translateY(-15px)";
+                thumb.style.borderColor = "var(--accent)";
+            });
+
+            // 2.5 秒後恢復並跳轉
+            setTimeout(() => {
+                allPins.forEach(p => {
+                    p.style.opacity = "1";
+                    p.querySelector('.pin-thumb').style.transform = "";
+                    p.querySelector('.pin-thumb').style.borderColor = "";
+                });
+                allAnchors.forEach(a => a.style.opacity = "0.95");
+                
+                // 🔴 導航體驗：使用者在手機上看清楚位置後，自動幫他跳轉
+                window.location.href = this.getAttribute('href');
+            }, 2500);
+        }
+    });
+});
+
+
 
 
 
