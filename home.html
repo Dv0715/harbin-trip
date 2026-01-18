@@ -168,22 +168,18 @@
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), 0 0 25px var(--accent-glow), 0 0 45px rgba(0,122,255,0.4);
       filter: brightness(1.1);
     }
-/* 1. 定義呼吸關鍵影格 */
+
+
+/* 1. 原本全域的呼吸動畫 (不用動) */
 @keyframes chibi-breath {
-    0%, 100% { 
-        /* 基礎縮放比例 */
-        transform: translateX(-50%) scale(0.14, 0.14); 
-    }
-    50% { 
-        /* 寬度微增 (0.142)，高度微縮 (0.137)，製造肉感的呼吸律動 */
-        transform: translateX(-50%) scale(0.142, 0.137); 
-    }
+    0%, 100% { transform: translateX(-50%) scale(0.14, 0.14); }
+    50% { transform: translateX(-50%) scale(0.142, 0.137); }
 }
 
-/* 2. 新增：專門給手機版的小尺寸呼吸動畫 */
+/* 1. 手機版專屬呼吸動畫定義 */
 @keyframes chibi-breath-mobile {
     0%, 100% { transform: translateX(-50%) scale(0.12, 0.12); }
-    50% { transform: translateX(-50%) scale(0.122, 0.117); } /* 比例等比縮小 */
+    50% { transform: translateX(-50%) scale(0.122, 0.117); }
 }
 
     @keyframes glowPulse {
@@ -389,19 +385,28 @@
       .map-head { flex-direction: column; align-items: flex-start; }
       .album-cta { width: 100%; justify-content: center; }
     }
-/* 針對手機版（螢幕寬度小於 600px）微調 */
+/* 2. 針對手機版 (螢幕寬度 < 600px) 的精確設定 */
 @media (max-width: 600px) {
     .family-line {
-        gap: 2px; /* 縮小間距 */
-        padding: 0 45px; /* 稍微縮小兩側邊距，給中間更多空間 */
+        gap: 2px;
+        padding: 0 45px;
     }
     .chibi-char {
-        width: 40px; /* 縮小單個角色的感應區 */
+        width: 40px;
     }
-.chibi-sprite {
-        /* 🔴 修改這裡：不要用 transform 鎖死，改用手機版專用的呼吸動畫 */
-        transform: translateX(-50%) scale(0.12); /* 初始比例 */
+
+    /* 🔴 平時狀態：只在沒有 .throwing 時播放呼吸 */
+    .chibi-char:not(.throwing) .chibi-sprite {
+        transform: translateX(-50%) scale(0.12); 
         animation: chibi-breath-mobile 2.5s infinite ease-in-out !important;
+    }
+
+    /* 🔴 投擲狀態：強行取代所有動畫 */
+    .chibi-char.throwing .chibi-sprite {
+        /* 必須確保比例維持 0.12 */
+        transform: translateX(-50%) scale(0.12) !important;
+        /* 播放投擲序列圖動畫，並取消呼吸動畫 */
+        animation: chibi-action-play 0.6s steps(5) forwards !important;
     }
 }
 
@@ -425,6 +430,8 @@
     -webkit-user-select: none;
     -webkit-touch-callout: none; /* 禁止手機長按彈出儲存圖片選單 */
     -webkit-tap-highlight-color: transparent; /* 移除點擊時的藍色方框 */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0); /* 🔴 補上這一行標準屬性，警告就會消失 */
 }
 
 
@@ -485,9 +492,9 @@
     transform: translateX(-50%) scale(0.14);
     transform-origin: bottom center;
 
-    width: 307px;
-    height: 498px;
-    background-size: 1842px 498px;
+    width: 160px;   /* 新的單格寬度 */
+    height: 260px;  /* 新的單格高度 */
+    background-size: 960px 260px; /* 總寬度 (160*6) 與 高度 */
     background-repeat: no-repeat;
     /* 關鍵：垂直必須為 0，解決頭部或腳部被切掉的問題 */
     background-position: 0px 0px; 
@@ -501,9 +508,18 @@
     
     /* 確保縮放中心在腳底，這樣呼吸時腳不會離地 */
     transform-origin: bottom center;
-backface-visibility: hidden; /* 防止閃爍 */
+
+/* 🔴 核心修正：強制開啟硬體加速與 3D 渲染層 */
+    backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    will-change: transform, background-position; /* 提示瀏覽器預作準備 */    
+    transform-style: preserve-3d;
+    perspective: 1000px;
+    
+    /* 提示瀏覽器這些屬性會變動，不要裁切快取 */
+   will-change: transform, background-position; /* 預告瀏覽器這兩項會變動 */
+    transform: translateZ(0); /* 強制開啟 GPU 硬體加速 */ 
+    
+    
 }
     
 /* 💡 更新後的 Sprite 樣式 */
@@ -513,7 +529,8 @@ backface-visibility: hidden; /* 防止閃爍 */
     position: absolute;
     bottom: 0;          /* 強制腳底貼齊容器底部 */
     left: 50%;
-    transform: translateX(-50%) scale(0.14);
+/* 顯示大小依然用 transform 縮放控制 */
+    transform: translateX(-50%) scale(0.5); /* 假設在 80px 的容器中 */
     
 
 
@@ -577,13 +594,13 @@ backface-visibility: hidden; /* 防止閃爍 */
 }
 
 /* 設定每個角色的圖片路徑 */
-#chibi-0 .chibi-sprite { background-image: url('images/runners/dad/runner_combined.png'); }
-#chibi-1 .chibi-sprite { background-image: url('images/runners/mom/runner_combined.png'); }
-#chibi-2 .chibi-sprite { background-image: url('images/runners/bro/runner_combined.png'); }
-#chibi-3 .chibi-sprite { background-image: url('images/runners/yan/runner_combined.png'); }
-#chibi-4 .chibi-sprite { background-image: url('images/runners/me/runner_combined.png'); }
-#chibi-5 .chibi-sprite { background-image: url('images/runners/di/runner_combined.png'); }
-#chibi-6 .chibi-sprite { background-image: url('images/runners/vi/runner_combined.png'); }
+#chibi-0 .chibi-sprite { background-image: url('images/runners/dad/runner_combined.webp'); }
+#chibi-1 .chibi-sprite { background-image: url('images/runners/mom/runner_combined.webp'); }
+#chibi-2 .chibi-sprite { background-image: url('images/runners/bro/runner_combined.webp'); }
+#chibi-3 .chibi-sprite { background-image: url('images/runners/yan/runner_combined.webp'); }
+#chibi-4 .chibi-sprite { background-image: url('images/runners/me/runner_combined.webp'); }
+#chibi-5 .chibi-sprite { background-image: url('images/runners/di/runner_combined.webp'); }
+#chibi-6 .chibi-sprite { background-image: url('images/runners/vi/runner_combined.webp'); }
 /* 修正 VS Code 的 line-clamp 警告 */
 .album-sub {
     display: -webkit-box;
@@ -857,7 +874,7 @@ function initInteractiveFooter() {
     
     container.innerHTML = CHIBI_DATA.map((char, i) => `
         <div class="chibi-char" id="chibi-${i}" title="${char.name}">
-            <div class="chibi-sprite" style="background-image: url('images/runners/${char.folder}/runner_combined.png')"></div>
+            <div class="chibi-sprite" style="background-image: url('images/runners/${char.folder}/runner_combined.webp')"></div>
         </div>
     `).join('');
 }

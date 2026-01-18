@@ -1,24 +1,26 @@
 from PIL import Image
 import os
 
-def merge_sprites(folder_path, output_name, frame_count=8):
+def merge_sprites_to_webp(folder_path, output_name, frame_count=6, target_size=None):
     """
-    將指定資料夾內的 1.png ~ 8.png 合併為橫向長條圖
+    將指定資料夾內的 1.png ~ n.png 合併為橫向 WebP 長條圖
+    :param target_size: 格式為 (寬, 高)，例如 (160, 260)，若為 None 則維持原圖大小
     """
     images = []
-    widths = []
-    heights = []
-
-    # 1. 依序讀取 A_1.png 到 A_8.png (請確保檔案名稱正確)
+    
+    # 1. 依序讀取圖片並處理縮放
     for i in range(1, frame_count + 1):
-        # 這裡根據你的檔名調整，例如 'A_1.png' 或 '1.png'
         file_path = os.path.join(folder_path, f'{i}.png')
         
         if os.path.exists(file_path):
             img = Image.open(file_path).convert("RGBA")
+            
+            # 如果有設定目標大小，自動執行手機版優化縮放
+            if target_size:
+                # 使用 LANCZOS 獲得最高品質的縮放效果
+                img = img.resize(target_size, Image.Resampling.LANCZOS)
+            
             images.append(img)
-            widths.append(img.width)
-            heights.append(img.height)
         else:
             print(f"警告：找不到檔案 {file_path}")
 
@@ -27,26 +29,30 @@ def merge_sprites(folder_path, output_name, frame_count=8):
         return
 
     # 2. 計算總畫布大小
-    total_width = sum(widths)
-    max_height = max(heights)
+    single_w, single_h = images[0].size
+    total_width = single_w * len(images)
+    max_height = single_h
 
     # 3. 建立透明底的畫布
     sprite_sheet = Image.new('RGBA', (total_width, max_height), (0, 0, 0, 0))
 
     # 4. 依序貼上圖片
-    x_offset = 0
-    for img in images:
-        sprite_sheet.paste(img, (x_offset, 0))
-        x_offset += img.width
+    for idx, img in enumerate(images):
+        sprite_sheet.paste(img, (idx * single_w, 0))
 
-    # 5. 儲存結果
-    sprite_sheet.save(output_name)
-    print(f"✅ 成功生成長條圖：{output_name}")
-    print(f"總尺寸：{total_width}x{max_height}")
+    # 5. 儲存為 WebP 格式
+    # 如果輸出檔名沒加 .webp，自動補上
+    if not output_name.lower().endswith('.webp'):
+        output_name = os.path.splitext(output_name)[0] + '.webp'
+
+    # quality=100 表示最高品質，method=6 慢速壓縮但檔案最小
+    sprite_sheet.save(output_name, "WEBP", quality=100, method=6)
+    
+    print(f"✅ 成功生成手機優化版 WebP：{output_name}")
+    print(f"單格尺寸：{single_w}x{single_h} | 總尺寸：{total_width}x{max_height}")
 
 # --- 執行區 ---
-# 假設你的圖片放在 images/runners/char1 資料夾下
-# merge_sprites('images/runners/char1', 'char1_sprite.png')
 
-# 如果圖片就在腳本同一個資料夾下，直接執行：
-merge_sprites('.', 'runner_combined.png')
+# 1. 執行合併：手動微調後，自動縮小為 160x260 並轉為 WebP
+# 假設資料夾在目前目錄，且有 6 幀動作
+merge_sprites_to_webp('.', 'runner_combined.webp', frame_count=6, target_size=(160, 260))
