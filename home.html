@@ -237,29 +237,45 @@
     }
 
     /* Pins & Anchors (完全保留原本位置邏輯) */
-    .pin { 
-      position: absolute; 
-      transform: translate(-50%, -50%); 
-      z-index: 100; /* 確保高於地圖 */
-      text-decoration: none; 
-    }
-    .pin:hover { z-index: 60; }
-    .pin-thumb {
-      width: 84px; height: 84px; border-radius: 50%;
-      border: 3px solid #fff; /* 強制純白邊框 */
-      overflow: hidden; 
-      box-shadow: 0 12px 28px rgba(0,0,0,0.4);
-      background: #888484;
-      transition: transform .22s cubic-bezier(0.23,1,0.32,1), box-shadow .22s ease, border-color .22s ease;
-      display: flex; align-items: center; justify-content: center;
+/* 1. 外層：專心呼吸，不放 transition */
+.pin {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    
+    /* 🟢 專業替代方案：明確告知瀏覽器這些屬性會變動 */
+    will-change: transform, opacity;
+    
+    /* 🟢 強制啟動 GPU 加速 */
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 
-      /* 增加強力的投影與光暈 */
-      box-shadow: 
-        0 10px 25px rgba(0,0,0,0.8),
-        0 0 15px rgba(255,255,255,0.3);
-      transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-      display: flex; align-items: center; justify-content: center;
-    }
+    /* 呼吸動畫 */
+    animation: pin-float-smooth 3s infinite ease-in-out;
+    
+    /* 🔴 為了配合點擊後的變淡效果，建議保留 opacity 的過渡 */
+    transition: opacity 0.4s ease; 
+}
+    
+.pin:hover {
+    z-index: 999 !important; /* 確保懸停時在最前面 */
+}
+
+
+/* 2. 內層 Thumb 負責「放大」與「指向」 */
+.pin-thumb {
+    width: 64px; height: 64px; /* 手機版建議適度縮小 */
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.8) !important;
+    overflow: hidden;
+    padding: 2px; /* 讓照片與邊框間留出一點空隙，更有呼吸感 */
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);    
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex; align-items: center; justify-content: center;
+}
+
     .pin-thumb img { 
       width: 100%; height: 100%; 
       object-fit: cover; 
@@ -267,6 +283,83 @@
       /* 獨立增加圖片亮度，抵消視覺壓抑感 */
       filter: brightness(1.1) contrast(1.1); 
     }
+.pin:hover .pin-thumb {
+    transform: scale(1.3); /* 這樣放大就不會跟呼吸衝突了 */
+    border-color: var(--accent);
+}
+    .pin-label {
+      position: absolute; left: 50%; top: 100%; margin-top: 10px;
+      transform: translateX(-50%); padding: 7px 14px; border-radius: 14px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(0,0,0,0.1);
+      color: #000; font-size: 12px; font-weight: 700;
+      white-space: nowrap; pointer-events: none; opacity: 0;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .pin:hover .pin-label {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-5px); /* 標籤跟著往上移動 */
+}
+
+
+
+/* 🔴 絲滑漂浮動畫：使用 translateY 而非 margin */
+@keyframes pin-float-smooth {
+    0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+    50% { transform: translate(-50%, -50%) translateY(-10px); }
+}
+
+
+
+/* 指標在地圖上的影子/定位點 */
+.pin-shadow {
+    width: 12px;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    /* 影子會隨著指標漂浮而縮放 */
+    animation: shadow-scale 2s ease-in-out infinite;
+}
+
+@keyframes shadow-scale {
+    0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.3; }
+    50% { transform: translateX(-50%) scale(0.6); opacity: 0.1; }
+}
+
+
+/* 4. 錯開不同 Pin 的呼吸節奏，看起來更自然 */
+.pin:nth-child(odd) { animation-delay: 0.5s; }
+.pin:nth-child(even) { animation-delay: 1.2s; }
+
+@keyframes pin-float-global {
+    0%, 100% { margin-top: 0; }
+    50% { margin-top: -8px; } /* 輕微位移 */
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* 可愛浮動指標 */
+
+
+
+
+
     .pin:hover .pin-thumb {
       transform: scale(1.10) translateY(-5px);
       box-shadow: 0 20px 44px rgba(0,0,0,0.5);
@@ -297,16 +390,23 @@
     .anchor .pin-needle-stroke { stroke: rgba(0,0,0,0.22); }
 
     /* Hot Sync */
-    .pin.is-hot .pin-thumb { transform: scale(1.1) translateY(-5px); border-color: #ff3b30; }
+    .pin.is-hot .pin-thumb { transform: scale(1.1) translateY(-5px); border-color: #ff9e30; }
     .pin.is-hot .pin-label { opacity: 1; }
-    .anchor.is-hot .pin-head { fill: #ff3b30; }
+    .anchor.is-hot .pin-head { fill: #ff9e30; }
 
     /* --- ✅ Video Dock (修正按鈕換行處) --- */
+.video-preview-box {
+    width: 70px !important;      /* 縮小預覽框 */
+    aspect-ratio: 1;             /* 改為正方形，看起來像 CD 封面或縮圖 */
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
     .video-dock {
       margin: 16px; border-radius: var(--radius-md);
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.06) !important;
       border: 1px solid var(--line);
-      padding: 16px 24px;
+      padding: 12px 16px !important;
       
       /* 關鍵設定 */
       display: flex; 
@@ -314,7 +414,7 @@
       align-items: center;     /* 垂直居中 */
       justify-content: space-between; /* 標題左、按鈕右 */
       flex-wrap: nowrap;       /* 強制不換行 */
-      gap: 16px;               /* 內容間距 */
+      gap: 12px !important;
     }
     
     .video-dock-title {
@@ -323,7 +423,9 @@
     }
     
     .video-dock-title .kicker { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
-    .video-dock-title .name { margin: 2px 0 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .video-dock-title .name {
+    font-size: 14px !important;  /* 稍微縮小字體 */
+}
 
     .video-dock-btn {
       flex-shrink: 0;          /* 防止按鈕被擠壓縮小 */
@@ -367,6 +469,85 @@
     }
     .video-wrap { background: #000; }
     .video-wrap video { display: block; width: 100%; max-height: min(70vh, 520px); }
+
+/* 容器：隱藏溢出並允許滑動 */
+.day-scroll-container {
+    width: 100%;
+    overflow: hidden;
+    padding: 10px 0;
+    margin-bottom: 10px;
+}
+
+.day-scroll-wrapper {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto; 
+    padding: 10px 20px; /* 增加底部 Padding 防止陰影被切掉 */
+    
+    /* 隱藏滾動條 */
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+}
+
+.day-scroll-wrapper::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+}
+
+/* Chip 樣式：延續你的玻璃擬態風格 */
+.day-chip {
+    flex-shrink: 0;
+    padding: 10px 22px;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+/* Day 0 & 5: 廈門 (暖橘調 20°C) */
+.chip-warm {
+    background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
+    box-shadow: 0 4px 12px rgba(255, 126, 95, 0.3);
+}
+
+/* Day 1: 哈爾濱市區 (過渡藍紫 -10°C) */
+.chip-cool {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    box-shadow: 0 4px 12px rgba(106, 17, 203, 0.3);
+}
+
+/* Day 2, 3, 4: 亞布力/雪鄉/大世界 (極寒冰藍 -25°C) */
+.chip-frozen {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+
+
+.day-chip:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent);
+transform: translateY(-8px); /* 向上浮起更多，更明顯 */
+    z-index: 20; /* 確保當前懸浮的按鈕在最前方 */
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);   
+    
+}
+
+/* 針對目前所在頁面的高亮 (選配) */
+.day-chip.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+}
+
+
+
+
+
 
     /* Editor HUD (維持原樣) */
     .pin-editor {
@@ -424,7 +605,22 @@
         /* 播放投擲序列圖動畫，並取消呼吸動畫 */
         animation: chibi-action-play 0.6s steps(5) forwards !important;
     }
+.chapter-grid {
+        grid-template-columns: repeat(2, 1fr) !important; /* 手機版維持兩欄，比較不佔空間 */
+        gap: 8px !important;
+    }
+    
+    .chapter-card {
+        padding: 10px !important;
+    }
+    
+    .chapter-title {
+        font-size: 12px !important;
+    }
 }
+
+
+
 
     /* -------------------------------------------
        ❄️ NEW: 家族互動底座樣式 (完全外掛，不影響排版)
@@ -440,8 +636,8 @@
     /* 主雪地：較前方的亮雪 */
     background: linear-gradient(to bottom, #ffffff 0%, #e0f0ff 100%);
     /* 關鍵：使用 clip-path 裁切出波浪弧度 */
-    clip-path: ellipse(100% 100% at 50% 100% 90);
-    filter: drop-shadow(0 -5px 10px rgba(255, 255, 255, 0.281));
+    clip-path: ellipse(120% 100% at 50% 100% 90);
+    filter: drop-shadow(0 -5px 10px rgba(114, 148, 241, 0.397));
     user-select: none; /* 禁止選取文字 */
     -webkit-user-select: none;
     -webkit-touch-callout: none; /* 禁止手機長按彈出儲存圖片選單 */
@@ -583,12 +779,56 @@
     overflow: visible !important; /* 確保不被裁切 */
 }
 
+/* 對話框主體 */
+.tip-bubble {
+    position: absolute;
+    bottom: 110%; /* 顯示在雪人頭頂上方 */
+    left: 50%;
+    transform: translateX(-50%);
+    background: #00000065; /* 提醒紅 */
+    color: white;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: bold;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 100;
+    display: none; /* 預設隱藏，由 JS 控制顯示 */
+}
+
+/* 對話框的小尾巴 (三角形) */
+.tip-bubble::after {
+    content: "";
+    position: absolute;
+    top: 100%; /* 在對話框正下方 */
+    left: 50%;
+    margin-left: -30px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: #00000065 transparent transparent transparent;
+}
+
+/* 呼吸動畫讓它更顯眼 */
+.tip-bubble.show {
+    display: block;
+    animation: bubble-float 2s infinite ease-in-out;
+}
+
+@keyframes bubble-float {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-5px); }
+}
+
+
+
+
 
 /* 丟球動作：繼承 transform 確保不位移 */
 .chibi-char.throwing .chibi-sprite {
   
     transform: translateX(-50%) scale(0.14);
-    animation: chibi-action-play 0.6s steps(5) forwards;
+    animation: chibi-action-play 0.35s steps(5) forwards;
     
 }
     .snowball-projectile {
@@ -701,6 +941,10 @@
             <span class="pin-label">廈門 → Day5</span>
           </a>
 
+
+
+
+          
           <!-- Anchor Pins -->
           <a class="anchor" data-pin="xiamen_d0" href="day00.html" style="left:20.77%; top:79.85%;"></a>
           <a class="anchor" data-pin="sophia_d1" href="day01.html" style="left:22.67%; top:11.13%;"></a>
@@ -712,21 +956,34 @@
           <a class="anchor" data-pin="centralst_d4" href="day04.html" style="left:22.23%; top:10.49%;"></a>
           <a class="anchor" data-pin="xiamen_d5" href="day05.html" style="left:12.92%; top:84.33%;"></a>
 
-          <div class="map-hint">提示：點擊下方左右雪人可互動喔！</div>
+          
         </div>
+
+<div class="day-scroll-container">
+    <div class="day-scroll-wrapper">
+        <a href="day00.html" class="day-chip chip-warm">Day 0 廈門 ☀</a>
+        <a href="day01.html" class="day-chip chip-cool">Day 1 哈爾濱 ☁</a>
+        <a href="day02.html" class="day-chip chip-frozen">Day 2 亞布力 ❄</a>
+        <a href="day03.html" class="day-chip chip-frozen">Day 3 雪鄉 ☃</a>
+        <a href="day04.html" class="day-chip chip-frozen">Day 4 大世界 🧊</a>
+        <a href="day05.html" class="day-chip chip-warm">Day 5 廈門 🏠</a>
+    </div>
+</div>
 
 
 <div class="video-dock" id="videoDock" style="display: flex !important;">
-    <div class="video-dock-title">
-        <div class="kicker">Highlights</div>
-        <div class="name">哈爾濱精華回顧</div>
-    </div>
-    <div class="video-preview-box" style="width: 200px; aspect-ratio: 9/16; overflow: hidden; border-radius: 8px; background: #000; margin-right: 12px;">
-        <video id="inlineVideo" muted autoplay loop playsinline style="width: 100%; height: 100%; object-fit: cover; opacity: 0.6;">
+    <div class="video-preview-box">
+        <video id="inlineVideo" muted autoplay loop playsinline style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
             <source src="videos/harbin_hero.mp4" type="video/mp4">
         </video>
     </div>
-    <button class="album-cta" id="openVideoBtn">重播並開啟聲音</button>
+    
+    <div class="video-dock-title">
+        <div class="kicker">Highlights</div>
+        <div class="name">回顧 50s 精華</div>
+    </div>
+    
+    <button class="video-dock-btn" id="openVideoBtn" style="padding: 8px 14px; font-size: 12px;">▶ 播放</button>
 </div>
 
         <div class="chapters">
@@ -785,10 +1042,10 @@
        ------------------------------------------- -->
   <div class="footer-game-zone">
       <!-- 左雪人 -->
-      <div class="snowman-btn left" onclick="attack('left')">
-          <img src="images/runners/snowman02.png" alt="左雪人" style="width: 100%; height: auto;">
-          <span style="font-size: 8px; font-weight: bold; background-color: #121d427e; color: white; padding: 2px 8px; border-radius: 999px; margin-top: -100px; margin-left: 20px; white-space: nowrap;">點我可攻擊!</span>
-      </div>
+<div class="snowman-btn left" onclick="attack('left')">
+    <img src="images/runners/snowman02.png" alt="左雪人" style="width: 100%; height: auto;">
+    <span id="attack-tip" class="tip-bubble">點我可攻擊!</span>
+</div>
 
       <!-- 6 位家族 Q 版成員 -->
       <div class="family-line" id="familyLine">
@@ -796,10 +1053,9 @@
       </div>
 
       <!-- 右雪人 -->
-      <div class="snowman-btn right" onclick="attack('right')">
-          <img src="images/runners/snowman01.png" alt="左雪人" style="width: 100%; height: auto;">
-          <span class="text-[9px] font-bold bg-blue-600 px-2 py-0.5 rounded-full mt-1">CLICK!</span>
-      </div>
+<div class="snowman-btn right" onclick="attack('right')">
+    <img src="images/runners/snowman01.png" alt="右雪人" style="width: 100%; height: auto;">
+</div>
   </div>
 
 
@@ -897,12 +1153,19 @@ function initInteractiveFooter() {
 
 // 3. attack 函式就能讀到 CHIBI_DATA.length 了
 function attack(fromSide) {
-    // 確保隨機數在 0 ~ 6 之間
+    // 🔴 核心修正：只要點擊雪人（不論左右），就觸發消失邏輯
+    const tip = document.getElementById('attack-tip');
+    if (tip) {
+        localStorage.setItem('hasSeenSnowmanTip', 'true'); // 紀錄已看過
+        tip.style.opacity = '0'; // 平滑淡出
+        setTimeout(() => tip.classList.remove('show'), 500); // 500ms 後移除
+    }
+
+    // --- 以下是你原本的雪球發射邏輯，不用動 ---
     const luckyIdx = Math.floor(Math.random() * CHIBI_DATA.length);
     const charEl = document.getElementById(`chibi-${luckyIdx}`);
     if (!charEl) return;
     
-    // 播放動畫
     charEl.classList.add('throwing');
     setTimeout(() => charEl.classList.remove('throwing'), 600);
 
@@ -1051,6 +1314,57 @@ document.getElementById('openVideoBtn').onclick = () => {
       if(!localStorage.getItem('harbin_seen')) setTimeout(()=>videoModal.classList.add('show'), 1000);
       else videoDock.hidden = false;
     })();
+
+
+function initAttackTip() {
+    const tip = document.getElementById('attack-tip');
+    
+    // 檢查瀏覽器紀錄，是否曾經關閉過提醒
+    const hasSeenTip = localStorage.getItem('hasSeenSnowmanTip');
+
+    if (!hasSeenTip) {
+        // 如果沒看過，顯示對話框
+        tip.classList.add('show');
+      
+    }
+}
+
+// 修改你原本的 attack 函式，當點擊時永久紀錄「已看過」
+const originalAttack = attack;
+attack = function(fromSide) {
+    // 執行原本的攻擊邏輯
+    originalAttack(fromSide);
+    
+    // 紀錄到 localStorage
+    localStorage.setItem('hasSeenSnowmanTip', 'true');
+    
+    // 點擊後立刻收起提醒
+    const tip = document.getElementById('attack-tip');
+    if (tip) tip.classList.remove('show');
+};
+
+// 頁面載入後初始化提醒
+window.addEventListener('load', initAttackTip);
+
+
+// 在 <script> 標籤內的最後面加入：
+document.querySelectorAll('.pin').forEach(p => {
+    p.addEventListener('click', function() {
+        const others = document.querySelectorAll('.pin');
+        const anchors = document.querySelectorAll('.anchor');
+        
+        // 點擊時讓其他標記變淡，突顯當前地點
+        others.forEach(o => { if (o !== this) o.style.opacity = "0.2"; });
+        anchors.forEach(a => a.style.opacity = "0.2");
+
+        // 3 秒後恢復正常
+        setTimeout(() => {
+            others.forEach(o => o.style.opacity = "1");
+            anchors.forEach(a => a.style.opacity = "0.95");
+        }, 3000);
+    });
+});
+
 
 
     
