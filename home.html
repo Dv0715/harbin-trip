@@ -180,7 +180,11 @@
     }
 }
 
-
+/* 2. 新增：專門給手機版的小尺寸呼吸動畫 */
+@keyframes chibi-breath-mobile {
+    0%, 100% { transform: translateX(-50%) scale(0.12, 0.12); }
+    50% { transform: translateX(-50%) scale(0.122, 0.117); } /* 比例等比縮小 */
+}
 
     @keyframes glowPulse {
       from { box-shadow: 0 4px 15px rgba(0,0,0,0.3), 0 0 10px var(--accent-glow); }
@@ -376,7 +380,7 @@
 
     @media (max-width: 860px) {
       .chapter-grid { grid-template-columns: repeat(2, 1fr); }
-      .pin-thumb { width: 64px; height: 64px; }
+      .pin-thumb { width: 32px; height: 32px; }
     }
     @media (max-width: 500px) {
       .chapter-grid { grid-template-columns: 1fr; }
@@ -385,7 +389,21 @@
       .map-head { flex-direction: column; align-items: flex-start; }
       .album-cta { width: 100%; justify-content: center; }
     }
-
+/* 針對手機版（螢幕寬度小於 600px）微調 */
+@media (max-width: 600px) {
+    .family-line {
+        gap: 2px; /* 縮小間距 */
+        padding: 0 45px; /* 稍微縮小兩側邊距，給中間更多空間 */
+    }
+    .chibi-char {
+        width: 40px; /* 縮小單個角色的感應區 */
+    }
+.chibi-sprite {
+        /* 🔴 修改這裡：不要用 transform 鎖死，改用手機版專用的呼吸動畫 */
+        transform: translateX(-50%) scale(0.12); /* 初始比例 */
+        animation: chibi-breath-mobile 2.5s infinite ease-in-out !important;
+    }
+}
 
     /* -------------------------------------------
        ❄️ NEW: 家族互動底座樣式 (完全外掛，不影響排版)
@@ -403,6 +421,10 @@
     /* 關鍵：使用 clip-path 裁切出波浪弧度 */
     clip-path: ellipse(100% 100% at 50% 100% 90);
     filter: drop-shadow(0 -5px 10px rgba(255, 255, 255, 0.281));
+    user-select: none; /* 禁止選取文字 */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none; /* 禁止手機長按彈出儲存圖片選單 */
+    -webkit-tap-highlight-color: transparent; /* 移除點擊時的藍色方框 */
 }
 
 
@@ -430,6 +452,11 @@
     .snowman-btn:active { transform: scale(0.9); }
     .snowman-btn.left { left: 0%; }
     .snowman-btn.right { right: 0%; }
+
+.snowman-btn, .chibi-char {
+    cursor: pointer;
+    -webkit-touch-callout: none; /* 再次確保角色與按鈕不會觸發長按菜單 */
+}
 
     .family-line {
         display: flex; 
@@ -470,10 +497,13 @@
     z-index: 10;
     transition: none; /* 防止位移緩衝 */
 /* 設定動畫：2秒一個循環，平滑進出，無限循環 */
-    animation: chibi-breath 2s infinite ease-in-out;
+    animation: chibi-breath 1.7s infinite ease-in-out;
     
     /* 確保縮放中心在腳底，這樣呼吸時腳不會離地 */
     transform-origin: bottom center;
+backface-visibility: hidden; /* 防止閃爍 */
+    -webkit-backface-visibility: hidden;
+    will-change: transform, background-position; /* 提示瀏覽器預作準備 */    
 }
     
 /* 💡 更新後的 Sprite 樣式 */
@@ -653,13 +683,18 @@
         </div>
 
 
-        <div class="video-dock" id="videoDock" hidden>
-          <div class="video-dock-title">
-            <div class="kicker">Highlights</div>
-            <div class="name">哈爾濱 50 秒精華影片</div>
-          </div>
-          <button class="video-dock-btn" id="openVideoBtn">▶ 播放影片</button>
-        </div>
+<div class="video-dock" id="videoDock" style="display: flex !important;">
+    <div class="video-dock-title">
+        <div class="kicker">Highlights</div>
+        <div class="name">哈爾濱精華回顧</div>
+    </div>
+    <div class="video-preview-box" style="width: 200px; aspect-ratio: 9/16; overflow: hidden; border-radius: 8px; background: #000; margin-right: 12px;">
+        <video id="inlineVideo" muted autoplay loop playsinline style="width: 100%; height: 100%; object-fit: cover; opacity: 0.6;">
+            <source src="videos/harbin_hero.mp4" type="video/mp4">
+        </video>
+    </div>
+    <button class="album-cta" id="openVideoBtn">重播並開啟聲音</button>
+</div>
 
         <div class="chapters">
           <h3>章節入口</h3>
@@ -965,9 +1000,20 @@ function attack(fromSide) {
       const heroVideo = document.getElementById('heroVideo');
       const videoDock = document.getElementById('videoDock');
       
-      function closeVideo(){ videoModal.classList.remove('show'); heroVideo.pause(); videoDock.hidden = false; localStorage.setItem('harbin_seen','1'); }
+      // 關閉影片時恢復靜音
+function closeVideo(){ 
+    videoModal.classList.remove('show'); 
+    heroVideo.pause(); 
+    // 不需要隱藏 videoDock，讓它一直存在像廣告一樣
+}
       document.getElementById('closeVideoBtn').onclick = closeVideo;
-      document.getElementById('openVideoBtn').onclick = () => videoModal.classList.add('show');
+      // 修改影片開啟邏輯
+document.getElementById('openVideoBtn').onclick = () => {
+    videoModal.classList.add('show');
+    heroVideo.currentTime = 0; // 重頭開始
+    heroVideo.muted = false;   // 開放聲音
+    heroVideo.play();
+};
       
       if(!localStorage.getItem('harbin_seen')) setTimeout(()=>videoModal.classList.add('show'), 1000);
       else videoDock.hidden = false;
