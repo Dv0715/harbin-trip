@@ -136,6 +136,22 @@
     }
 
 
+/* 雪人按鈕 */
+.snowman-btn span {
+    display: inline-block;
+    box-shadow: 0 0 8px rgba(0, 122, 255, 0.6); /* 增加藍色發光 */
+    animation: label-pulse 1.5s infinite ease-in-out; /* 讓文字標籤也會跳動 */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+@keyframes label-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+
+
+
     /* ✅ 強化後的「看相簿總覽」按鈕 */
     .album-cta {
       position: relative; /* 為了內層掃光效果 */
@@ -450,15 +466,15 @@
 
 
     .snowman-btn {
-        position: absolute; bottom: 30px;
-        width: 90px; height: 90px;
+        position: absolute; bottom: 32px;
+        width: 80px; height: 80px;
         cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         display: flex; flex-direction: column; align-items: center;
     }
     .snowman-btn:hover { transform: scale(1.15); }
     .snowman-btn:active { transform: scale(0.9); }
-    .snowman-btn.left { left: 0%; }
-    .snowman-btn.right { right: 0%; }
+    .snowman-btn.left { left: -4%; }
+    .snowman-btn.right { right: -4%; }
 
 .snowman-btn, .chibi-char {
     cursor: pointer;
@@ -771,7 +787,7 @@
       <!-- 左雪人 -->
       <div class="snowman-btn left" onclick="attack('left')">
           <img src="images/runners/snowman02.png" alt="左雪人" style="width: 100%; height: auto;">
-          <span class="text-[9px] font-bold bg-blue-600 px-2 py-0.5 rounded-full mt-1">CLICK!</span>
+          <span style="font-size: 8px; font-weight: bold; background-color: #121d427e; color: white; padding: 2px 8px; border-radius: 999px; margin-top: -100px; margin-left: 20px; white-space: nowrap;">點我可攻擊!</span>
       </div>
 
       <!-- 6 位家族 Q 版成員 -->
