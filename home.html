@@ -633,7 +633,7 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
 .video-preview-box {
         width: 50% !important;   /* 預覽框佔滿左右 */
         max-width: none !important; 
-        aspect-ratio: 16 / 9 !important; /* 維持寬螢幕比例 */
+        aspect-ratio: 9 / 16 !important; /* 維持寬螢幕比例 */
     }
  .video-dock-title .name {
         font-size: 16px !important; /* 手機版文字適度縮小 */
@@ -857,6 +857,7 @@ position: absolute;
     display: flex;
     justify-content: center;
     align-items: flex-end;
+    flex-shrink: 0 !important; /* 👈 關鍵：強制不準縮小，解決右邊消失問題 */
 }
 
 /* 對話框主體 */
