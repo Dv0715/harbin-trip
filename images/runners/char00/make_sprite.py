@@ -4,7 +4,7 @@ import os
 def merge_sprites_to_webp(folder_path, output_name, frame_count=6, target_size=None):
     """
     將指定資料夾內的 1.png ~ n.png 合併為橫向 WebP 長條圖
-    :param target_size: 格式為 (寬, 高)，例如 (160, 260)，若為 None 則維持原圖大小
+    :param target_size: 格式為 (寬, 高)，例如 (1085, 230)，若為 None 則維持原圖大小
     """
     images = []
     
@@ -52,7 +52,12 @@ def merge_sprites_to_webp(folder_path, output_name, frame_count=6, target_size=N
     print(f"單格尺寸：{single_w}x{single_h} | 總尺寸：{total_width}x{max_height}")
 
 # --- 執行區 ---
-
-# 1. 執行合併：手動微調後，自動縮小為 160x260 並轉為 WebP
-# 假設資料夾在目前目錄，且有 6 幀動作
-merge_sprites_to_webp('.', 'runner_combined.webp', frame_count=6, target_size=(160, 260))
+# 1. folder_path: 你的 1.png ~ 8.png 所在的資料夾
+# 2. frame_count: 8 幀
+# 3. target_size: 建議縮小，例如 (600, 76) 左右，這樣 8 張合併總寬約 4800px，比較安全
+merge_sprites_to_webp(
+    folder_path='.', 
+    output_name='runner_combined.webp', 
+    frame_count=8, 
+    target_size=(600, 76) 
+)

@@ -78,6 +78,46 @@
         }
 
 
+    /* -------------------------------------------
+       ❄️ NEW: 家族互動底座樣式 (完全外掛，不影響排版)
+       ------------------------------------------- */
+.footer-game-zone {
+    position: fixed;
+    bottom: 0; left: 0; width: 100%; height: 0px; /* 稍微調高，因為波浪會裁切掉一部分 */
+    z-index: 200;
+    display: flex; justify-content: center; align-items: flex-end;
+    padding-bottom: 12px;
+    pointer-events: none;
+    
+    /* 主雪地：較前方的亮雪 */
+    background: linear-gradient(to bottom, #ffffff 0%, #e0f0ff 100%);
+    /* 關鍵：使用 clip-path 裁切出波浪弧度 */
+    clip-path: ellipse(120% 100% at 50% 100% 90);
+    filter: drop-shadow(0 -5px 10px rgba(114, 148, 241, 0.397));
+    user-select: none; /* 禁止選取文字 */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none; /* 禁止手機長按彈出儲存圖片選單 */
+    -webkit-tap-highlight-color: transparent; /* 移除點擊時的藍色方框 */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0); /* 🔴 補上這一行標準屬性，警告就會消失 */
+}
+
+
+.footer-game-zone::before {
+    content: "";
+    position: absolute;
+    top: 20px; left: 0; width: 100%; height: 100%;
+    /* 後方雪地：顏色稍深，製造層次感 */
+    background: linear-gradient(to bottom, #81abcf 0%, #4b82bd 100%);
+    /* 後方的波浪弧度與前方錯開 */
+    clip-path: ellipse(150% 100% at 40% 100%);
+    z-index: -1;
+    opacity: 0.8;
+}
+
+
+
+
 /* --- 跑步小人系統 --- */
 .runner-track {
     position: fixed;
@@ -93,7 +133,7 @@
     transform: scale(0.85);
     transform-origin: bottom center;
     /* ✅ 將 scale 從原本的 0.85 改小，例如 0.5 或 0.6 */
-    transform: scale(0.4); 
+    transform: scale(0.7); 
     
     /* 確保縮放是貼著底邊進行的 */
     transform-origin: bottom center;
@@ -104,16 +144,16 @@
 
 .runner {
     /* ✅ 關鍵：寬度設為長條圖的 1/8 (約 100px)，高度固定 */
-    width: 648px; 
-    height: 168px;
-    background-image: url('images/runners/char00/00.png');
+    width: 600px; 
+    height: 90px;
+    background-image: url('images/runners/char00/00.webp');
     
     /* ✅ 關鍵：因為是 8 幀大合體，背景大小設為 800% 100% */
-    background-size: 700% 100%; 
+    background-size: 800% 100%; 
     image-rendering: pixelated;
     
     /* ✅ 關鍵：steps 設為 8，對應你的 8 張逐格圖 */
-    animation: spriteRun 0.55s steps(6) infinite;
+    animation: spriteRun 0.55s steps(7) infinite;
 }
 
 @keyframes spriteRun {
@@ -234,18 +274,18 @@
     margin: 0 0 6px 0;
     font-size: 18px;
     font-weight: 900;
-    color: #2c3e50; /* 🔴 避免純黑，使用有質感的深藍灰 */
+    color: #4978a7; /* 🔴 避免純黑，使用有質感的深藍灰 */
     letter-spacing: 3px;
-    text-shadow: 0 1px 1px rgba(255,255,255,0.5);
+    text-shadow: 0 1px 1px rgba(190, 199, 228, 0.5);
 }
 
 
 
-/* 描述：改為深藍色，呼應冰雪主題 */
+/* 描述：改為深藍色，呼應冰雪主題 */ㄏ
 .hint-capsule p {
     margin: 0;
     font-size: 16px;
-    color: #34495e; 
+    color: #2e75bb; 
     font-weight: 700;
     letter-spacing: 1px;
     opacity: 0.8;
@@ -301,7 +341,7 @@
     <p>試著用手指擦拭鏡面</p>
 </div>
     </div>
-
+ <div class="footer-game-zone"></div>
     <script>
         const fCanvas = document.getElementById('frostCanvas');
         const fCtx = fCanvas.getContext('2d');
