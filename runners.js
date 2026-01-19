@@ -4,35 +4,33 @@
     // 1. 自動注入 CSS 樣式
     const style = document.createElement('style');
     style.innerHTML = `
-        /* 總容器：徹底固定置底 */
-.footer-game-zone-wrap {
-        position: fixed;
-        bottom: 0; left: 0;
-        width: 100%; height: 120px;
-        z-index: 2000;
-        pointer-events: none;
-        display: flex;
-        justify-content: center;
-        align-items: flex-end;
-        /* ✅ 在這層加光暈，雪地邊緣才會亮起來 */
-        filter: drop-shadow(0 2px 14px rgba(255, 255, 255, 0.7));
-    }
+/* 總容器 */
+        .footer-game-zone-wrap {
+            position: fixed;
+            bottom: 0; left: 0;
+            width: 100%; height: 120px;
+            z-index: 2000;
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            overflow: visible;
+            /* 網頁版環境光暈 */
+            filter: drop-shadow(0 20px 10px rgba(255, 255, 255, 0.7));
+        }
 
-/* ✅ 弧形雪地層：解決裁切導致光暈消失的問題 */
-.snow-base-layer {
-    position: absolute;
-    bottom: 0; left: 0; 
-    width: 100%; height: 120px;
-    background: linear-gradient(to bottom, #ffffff 0%, #e0f0ff 100%);
-    
-    /* 1. 先用 clip-path 定義形狀 */
-    clip-path: ellipse(90% 100% at 50% 100%);
-    z-index: 10;
-    
-    /* 2. 內部發光 (不受裁切影響) */
-    box-shadow: inset 0 5px 2px rgba(255, 255, 255, 0.42),
-                inset 0 5px 2px rgba(114, 148, 241, 0.4);
-}
+/* 弧形雪地層 - ✅ 這裡修改網頁版數值 */
+        .snow-base-layer {
+            position: absolute;
+            bottom: 0; left: 0; 
+            width: 100%; 
+            height: 25px; /* 👈 網頁版雪地調矮一點，防止擋住內容 */
+            background: linear-gradient(to bottom, #ffffff 0%, #e0f0ff 100%);
+            /* ✅ 網頁版弧度改為較平緩的 120% */
+            clip-path: ellipse(120% 100% at 50% 100%); 
+            z-index: 10;
+            box-shadow: inset 0 0px 25px rgba(255, 255, 255, 0.9);
+        }
 
 
 
@@ -57,8 +55,8 @@
             image-rendering: pixelated;
             animation: spriteRun 0.55s steps(7) infinite;
             /* 這裡使用 drop-shadow 產生跟隨形狀的藍白色光暈 */
-            filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.42))
-                    drop-shadow(0 0 12px rgba(135, 206, 250, 0.4));
+            filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.14))
+                    drop-shadow(0 0 2px rgba(135, 206, 250, 0.28));
         }
 
 
@@ -77,7 +75,7 @@
             pointer-events: auto;
             transition: transform 0.2s, filter 0.3s;
             /* 雪人光暈 */
-            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.42));
+            filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.23));
         }
     .snowman-btn.left { left: -12px; }
     .snowman-btn.right { right: -12px; }
