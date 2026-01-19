@@ -16,7 +16,7 @@
             align-items: flex-end;
             overflow: visible;
             /* 網頁版環境光暈 */
-            filter: drop-shadow(0 20px 10px rgba(255, 255, 255, 0.7));
+            filter: drop-shadow(0 30px 20px rgba(255, 255, 255, 0.59));
         }
 
 /* 弧形雪地層 - ✅ 這裡修改網頁版數值 */
