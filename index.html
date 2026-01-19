@@ -6,22 +6,33 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
     <title>哈爾濱回憶錄 | 擦開冰霜開啟旅程</title>
     
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src=""></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, sans-serif; }
 
 /* 背景層容器：改為黑色底，防止圖片沒填滿時漏光 */
+/* 背景層初始狀態 */
 .background-layer {
     position: absolute;
     inset: 0;
-    background: #000; /* 核心：底色壓暗 */
+    background: #000;
     z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+    /* 🔴 初始縮放設為 0.9 (縮小)，製造拉遠感 */
+    transform: scale(0.9); 
+    /* 🔴 增加過渡時間到 1.5s，並使用更強的貝茲曲線，讓放大更有「彈性」 */
+    transition: transform 1.5s cubic-bezier(0.22, 1, 0.36, 1), filter 1.5s ease;
+    filter: brightness(0.5) blur(2px); /* 初始模糊且壓暗 */
+}
+
+/* 🟢 轉場啟動時：大幅放大並變亮 */
+.clearing .background-layer {
+    transform: scale(1.15); /* 放大到 1.15 倍 */
+    filter: brightness(1) blur(0px); /* 恢復亮度並清晰 */
 }
 
 /* 圖片處理： object-fit: contain 確保圖片完整顯示，不被裁切 */
@@ -185,23 +196,68 @@
             border-color: #fff;
         }
 
-        /* 文字強化：黑色膠囊背景 */
+
+
+
+
+
+
+        
+/* 提示框主體：改為高級玻璃質感 */
 .hint-capsule {
-        position: fixed;
-        bottom: 70px; /* 這裡要比 runner-track 高 */
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 1000;
-        background: rgba(0, 0, 0, 0.75);
-        backdrop-filter: blur(15px);
-        padding: 12px 28px;
-        border-radius: 99px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        text-align: center;
-        color: white;
-        pointer-events: none;
-        animation: breathe 3s infinite ease-in-out;
-    }
+    position: fixed;
+    bottom: 18%; /* 稍微調高，露出更多下方跑步的小人 */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    
+    /* 🔴 關鍵：極致透明感的白色玻璃 */
+    background: rgba(255, 255, 255, 0.25); 
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    
+    padding: 20px 40px;
+    border-radius: 30px; 
+    /* 🔴 冰晶邊框感：雙重邊框效果 */
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 
+        0 8px 32px rgba(31, 38, 135, 0.15), /* 深色外投影 */
+        inset 0 0 15px rgba(255, 255, 255, 0.3); /* 內部亮光感 */
+    
+    text-align: center;
+    pointer-events: none;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 標題：改為深灰藍色，質感更高級 */
+.hint-capsule h2 {
+    margin: 0 0 6px 0;
+    font-size: 18px;
+    font-weight: 900;
+    color: #2c3e50; /* 🔴 避免純黑，使用有質感的深藍灰 */
+    letter-spacing: 3px;
+    text-shadow: 0 1px 1px rgba(255,255,255,0.5);
+}
+
+
+
+/* 描述：改為深藍色，呼應冰雪主題 */
+.hint-capsule p {
+    margin: 0;
+    font-size: 16px;
+    color: #34495e; 
+    font-weight: 700;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
+
+/* 當擦拭完成時，讓提示框優雅消失 */
+.clearing .hint-capsule {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+    pointer-events: none;
+}
+
 
     @keyframes spriteRun {
         from { background-position: 0% 0; }
@@ -223,13 +279,11 @@
     <!-- 背景層 -->
 <div class="background-layer">
     <img src="images/load.webp" alt="Memories" class="memories-img">
-    
     <div class="vignette-overlay"></div>
-
-    <div class="spine-box relative z-10">
-        <span class="text-7xl drop-shadow-2xl">❄️</span>
     </div>
-    <p class="text-blue-200 text-xs tracking-[0.4em] font-black uppercase relative z-10">Harbin Memories</p>
+
+<div class="ui-overlay">
+    <button class="skip-btn" onclick="enterSite()">進入旅程 ➔</button>
 </div>
 
     <!-- 窗外雪花 -->
@@ -242,10 +296,10 @@
     <div class="ui-overlay">
         <button class="skip-btn" onclick="enterSite()">跳過動畫 ➔</button>
         
-        <div class="hint-capsule">
-            <h2 class="text-xl font-black mb-1 tracking-wider text-white">哈爾濱回憶錄</h2>
-            <p class="text-xs font-bold text-blue-300 tracking-[0.15em]">用手擦拭鏡面，撥開漫天冰雪</p>
-        </div>
+<div class="hint-capsule">
+    <h2>❄️哈爾濱回憶錄</h2>
+    <p>試著用手指擦拭鏡面</p>
+</div>
     </div>
 
     <script>
