@@ -5,36 +5,27 @@
     const style = document.createElement('style');
     style.innerHTML = `
         /* 總容器：徹底固定置底 */
-.footer-game-zone-wrap {
-        position: fixed;
-        bottom: 0; left: 0;
-        width: 100%; height: 120px;
-        z-index: 2000;
-        pointer-events: none;
-        display: flex;
-        justify-content: center;
-        align-items: flex-end;
-        /* ✅ 在這層加光暈，雪地邊緣才會亮起來 */
-        filter: drop-shadow(0 2px 14px rgba(255, 255, 255, 0.7));
-    }
+        .footer-game-zone-wrap {
+            position: fixed;
+            bottom: 0; left: 0;
+            width: 100%; height: 120px;
+            z-index: 2000;
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            overflow: visible;
+        }
 
-/* ✅ 弧形雪地層：解決裁切導致光暈消失的問題 */
-.snow-base-layer {
-    position: absolute;
-    bottom: 0; left: 0; 
-    width: 100%; height: 120px;
-    background: linear-gradient(to bottom, #ffffff 0%, #e0f0ff 100%);
-    
-    /* 1. 先用 clip-path 定義形狀 */
-    clip-path: ellipse(90% 100% at 50% 100%);
-    z-index: 10;
-    
-    /* 2. 內部發光 (不受裁切影響) */
-    box-shadow: inset 0 5px 2px rgba(255, 255, 255, 0.42),
-                inset 0 5px 2px rgba(114, 148, 241, 0.4);
-}
-
-
+        /* 弧形雪地層 */
+        .snow-base-layer {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 120px;
+            background: linear-gradient(to bottom, #ffffff 0%, #e0f0ff 100%);
+            clip-path: ellipse(90% 100% at 50% 100%);
+            z-index: 10;
+            filter: drop-shadow(0 -5px 10px rgba(114, 148, 241, 0.3));
+        }
 
         /* 跑步軌道 */
         .runner-track {
@@ -48,18 +39,7 @@
             transform: scale(0.7);
             transform-origin: bottom center;
         }
-/* ✅ 跑步小人本體：加入人物光暈 */
-        .runner {
-            width: 600px; 
-            height: 90px;
-            background-image: url('images/runners/char00/00.webp');
-            background-size: 800% 100%; 
-            image-rendering: pixelated;
-            animation: spriteRun 0.55s steps(7) infinite;
-            /* 這裡使用 drop-shadow 產生跟隨形狀的藍白色光暈 */
-            filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.42))
-                    drop-shadow(0 0 12px rgba(135, 206, 250, 0.4));
-        }
+
 
 
 
@@ -68,17 +48,15 @@
 
 
 
-/* ✅ 雪人按鈕：加入發光與懸浮感 */
-        .snowman-btn {
-            position: absolute;
-            bottom: 16px;
-            width: 55px; height: 55px;
-            z-index: 220;
-            pointer-events: auto;
-            transition: transform 0.2s, filter 0.3s;
-            /* 雪人光暈 */
-            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.42));
-        }
+/* 雪人按鈕：固定在螢幕左右兩側 */
+.snowman-btn {
+position: absolute;
+    bottom: 16px;
+    width: 55px; height: 55px;
+    z-index: 220; /* 層級最高 */
+    pointer-events: auto;
+    transition: transform 0.2s;
+}
     .snowman-btn.left { left: -12px; }
     .snowman-btn.right { right: -12px; }
         

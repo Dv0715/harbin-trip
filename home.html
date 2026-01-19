@@ -858,6 +858,8 @@ position: absolute;
     justify-content: center;
     align-items: flex-end;
     flex-shrink: 0 !important; /* 👈 關鍵：強制不準縮小，解決右邊消失問題 */
+      transform: translateZ(0);
+  will-change: transform;
 }
 
 /* 對話框主體 */
@@ -993,19 +995,19 @@ position: absolute;
             <span class="pin-thumb"><img src="images/pins/Day1.webp" alt=""></span>
             <span class="pin-label">聖索菲亞教堂 → Day1</span>
           </a>
-          <a class="pin" data-day="day02" data-pin="yabuli_d2" href="day02.html" style="left:60.05%; top:50.86%;">
+          <a class="pin" data-day="day02" data-pin="yabuli_d2" href="day02.html" style="left:60.05%; top:47.86%;">
             <span class="pin-thumb"><img src="images/pins/Day2.webp" alt=""></span>
             <span class="pin-label">亞布力 → Day2</span>
           </a>
-          <a class="pin" data-day="day03" data-pin="tutou_d3" href="day03.html" style="left: 85%; top:60.8%;">
+          <a class="pin" data-day="day03" data-pin="tutou_d3" href="day03.html" style="left: 85%; top:53.8%;">
             <span class="pin-thumb"><img src="images/pins/Day3.webp" alt=""></span>
             <span class="pin-label">大禿頂子山 → Day3</span>
           </a>
-          <a class="pin" data-day="day03" data-pin="snow_d3" href="day03.html" style="left:76.52%; top:75.62%;">
+          <a class="pin" data-day="day03" data-pin="snow_d3" href="day03.html" style="left:76.52%; top:72.62%;">
             <span class="pin-thumb"><img src="images/pins/Day4.webp" alt=""></span>
             <span class="pin-label">雪鄉 → Day3</span>
           </a>
-          <a class="pin" data-day="day04" data-pin="gallery_d4" href="day04.html" style="left:56.17%; top:78.64%;">
+          <a class="pin" data-day="day04" data-pin="gallery_d4" href="day04.html" style="left:56.17%; top:71.64%;">
             <span class="pin-thumb"><img src="images/pins/Day5.webp" alt=""></span>
             <span class="pin-label">冰雪畫廊 → Day4</span>
           </a>
@@ -1046,7 +1048,7 @@ position: absolute;
         <a href="day01.html" class="day-chip chip-cool">Day 1 哈爾濱 ☁</a>
         <a href="day02.html" class="day-chip chip-frozen">Day 2 亞布力 ❄</a>
         <a href="day03.html" class="day-chip chip-frozen">Day 3 雪鄉 ☃</a>
-        <a href="day04.html" class="day-chip chip-frozen">Day 4 大世界 🧊</a>
+        <a href="day04.html" class="day-chip chip-frozen">Day 4 冰雪大世界🧊 </a>
         <a href="day05.html" class="day-chip chip-warm">Day 5 廈門 🏠</a>
     </div>
 </div>
