@@ -295,10 +295,14 @@
       /* 獨立增加圖片亮度，抵消視覺壓抑感 */
       filter: brightness(1.1) contrast(1.1); 
     }
-.pin:hover .pin-thumb {
-    transform: scale(1.3); /* 這樣放大就不會跟呼吸衝突了 */
-    border-color: var(--accent);
-   
+
+/* 3. 當滑鼠靠近或點擊時，只針對內層放大，不影響外層的呼吸路徑 */
+.pin:hover .pin-thumb, 
+.pin:active .pin-thumb,
+.pin-focus .pin-thumb {
+    transform: scale(1.3) !important; /* 這裡只負責縮放 */
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 25px var(--accent-glow) !important;
 }
     .pin-label {
       position: absolute; left: 50%; top: 100%; margin-top: 10px;
@@ -412,40 +416,59 @@
     flex-shrink: 0;
 }
 
-    .video-dock {
-      margin: 16px; border-radius: var(--radius-md);
-      background: rgba(255, 255, 255, 0.06) !important;
-      border: 1px solid var(--line);
-      padding: 12px 16px !important;
-      
-      /* 關鍵設定 */
-      display: flex; 
-      flex-direction: row;     /* 水平排列 */
-      align-items: center;     /* 垂直居中 */
-      justify-content: space-between; /* 標題左、按鈕右 */
-      flex-wrap: nowrap;       /* 強制不換行 */
-      gap: 12px !important;
-    }
+.video-dock {
+    margin: 16px 20px 28px; 
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--line);
+    padding: 20px !important;
     
-    .video-dock-title {
-      flex: 1;                 /* 標題佔滿剩餘空間 */
-      min-width: 0;            /* 配合彈性佈局避免溢出 */
-    }
+    /* 改為垂直排列以實現置中與大佔比 */
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    text-align: center;
+    gap: 16px !important;
+    backdrop-filter: blur(10px);
+}
     
-    .video-dock-title .kicker { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
-    .video-dock-title .name {
-    font-size: 14px !important;  /* 稍微縮小字體 */
+.video-dock-title {
+    flex: none;
+    width: 100%;
 }
 
-    .video-dock-btn {
-      flex-shrink: 0;          /* 防止按鈕被擠壓縮小 */
-      border: none; background: #fff; color: #000;
-      padding: 10px 20px; border-radius: 999px;
-      font-size: 14px; font-weight: 600; cursor: pointer;
-      transition: all 0.2s ease;
-      white-space: nowrap;     /* 文字也不要換行 */
-    }
-    .video-dock-btn:hover { transform: scale(1.05); background: #f5f5f7; }
+.video-dock-title .kicker { 
+    font-size: 12px; 
+    color: var(--accent); 
+    font-weight: 700; 
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.video-dock-title .name {
+    font-size: 18px !important; 
+    font-weight: 800;
+    color: #fff;
+}
+
+.video-dock-btn {
+    width: auto;
+    min-width: 160px;
+    background: #fff; 
+    color: #000;
+    padding: 12px 28px; 
+    border-radius: 999px;
+    font-size: 15px; 
+    font-weight: 700; 
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255,255,255,0.2);
+}
+
+.video-dock-btn:hover { 
+    transform: scale(1.05) translateY(-2px); 
+    background: var(--accent);
+}
 
     /* Chapters */
     .chapters { margin: 0 18px 6px; border-top: 1px solid var(--line); padding: 14px 16px 18px; }
@@ -594,12 +617,41 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     }
 /* 2. 針對手機版 (螢幕寬度 < 600px) 的精確設定 */
 @media (max-width: 600px) {
-    .family-line {
-        gap: 2px;
-        padding: 0 45px;
+.video-dock {
+        margin: 10px 15px 25px !important; /* 適度留白 */
+        padding: 20px 16px !important;     /* 增加上下內距，更有卡片感 */
+        display: flex !important;
+        flex-direction: column !important; /* 強制垂直排列 */
+        align-items: center !important;    /* 👈 關鍵：強制水平置中 */
+        text-align: center !important;     /* 👈 關鍵：強制文字置中 */
+        width: calc(100% - 30px) !important; /* 確保容器寬度正確 */
+    }
+.video-dock {
+        margin: 10px;
+        padding: 16px !important;
+    }
+.video-preview-box {
+        width: 50% !important;   /* 預覽框佔滿左右 */
+        max-width: none !important; 
+        aspect-ratio: 16 / 9 !important; /* 維持寬螢幕比例 */
+    }
+ .video-dock-title .name {
+        font-size: 16px !important; /* 手機版文字適度縮小 */
+    }
+
+    .video-dock-btn {
+        width: 80% !important;    /* 讓按鈕在手機上稍微長一點，好點擊 */
+        min-width: 200px !important;
+        margin-top: 5px;
+    }   
+
+.family-line {
+        max-width: 280px; /* ✅ 手機版：上限設小一點，強迫人物「集中」 */
+        justify-content: center; /* 手機版居中靠攏 */
+        gap: 0px; 
     }
     .chibi-char {
-        width: 40px;
+       width: 38px !important; /* 手機版每個人站近一點 */
     }
 
     /* 🔴 平時狀態：只在沒有 .throwing 時播放呼吸 */
@@ -627,8 +679,8 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     .chapter-title {
         font-size: 12px !important;
     }
-}
 
+}
 
 
 
@@ -637,12 +689,16 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
        ❄️ NEW: 家族互動底座樣式 (完全外掛，不影響排版)
        ------------------------------------------- */
 
-/* 總容器：取消原本的 clip-path */
+/* 1. 總容器：徹底固定置底，不隨畫面捲動 */
 .footer-game-zone-wrap {
     position: fixed;
-    bottom: 0; left: 0; width: 100%; height: 125px;
-    z-index: 200;
-    pointer-events: none;
+    bottom: 0; left: 0;
+    width: 100%; height: 120px;
+    z-index: 2000;
+    pointer-events: none; /* 讓點擊可以穿透到底下的地圖 */
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
 }
 
 /* 確保 z-index 在點擊時能正確提升 */
@@ -652,18 +708,19 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
 
 
 
-/* 雪人按鈕定位 */
+/* 雪人按鈕：固定在螢幕左右兩側 */
 .snowman-btn {
-    position: absolute; bottom: 32px;
+position: absolute;
+    bottom: 26px;
     width: 80px; height: 80px;
-    z-index: 230; /* 🟢 確保在最前面 */
+    z-index: 220; /* 層級最高 */
     pointer-events: auto;
-    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.2s;
 }
     .snowman-btn:hover { transform: scale(1.15); }
     .snowman-btn:active { transform: scale(0.9); }
-    .snowman-btn.left { left: -4%; }
-    .snowman-btn.right { right: -4%; }
+    .snowman-btn.left { left: -12px; }
+    .snowman-btn.right { right: -12px; }
 
 .snowman-btn, .chibi-char {
     cursor: pointer;
@@ -684,17 +741,20 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
 }
 
 
-/* 2. 人物層：浮在最上方，不被裁切 */
+/* 2. 人物層：關鍵的「自適應寬度」設計 */
 .family-line {
-    position: absolute;
-    bottom: 22px; /* 🟢 調整這個值，讓角色腳底剛好踩在雪地弧線上 */
-    left: 0; width: 100%;
-    display: flex; justify-content: center;
+    position: relative;
+    bottom: 20px;
+    width: 100%;          /* 預設寬度 */
+    max-width: 1920px;    /* ✅ 網頁版：上限設大一點，讓人物有空間「散開」 */
+    display: flex; 
+    justify-content: space-around; /* 讓人物在寬度內均勻散開 */
+    align-items: flex-end;
     overflow: visible !important; 
     z-index: 220; 
     pointer-events: auto;
+    margin: 0 auto;
 }
-
 /* 弧形雪地層：專心負責背景 */
 .snow-base-layer {
     position: absolute;
@@ -707,15 +767,7 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
 
 
 
-.chibi-char {
-    position: relative;
-    width: 50px;  /* 容器寬度 */
-    height: 80px; /* 容器高度 */
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    overflow: visible !important;
-}
+
 
 .chibi-sprite {
     position: absolute;
@@ -780,24 +832,31 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     image-rendering: auto;
 }
 
+/* 1. 修正人物層容器 */
 .family-line {
-    display: flex;
-    gap: 0px; /* 縮放後負 margin 已處理間距，設為 0 */
+    position: absolute;
+    bottom: 22px;
+    left: 50%;           /* 改為中心定位 */
+    transform: translateX(-50%); /* 配合中心定位 */
+    width: auto;         /* 寬度隨內容伸縮 */
+    min-width: 100%;     /* 至少跟螢幕一樣寬 */
+    display: flex; 
+    justify-content: center;
     align-items: flex-end;
-    justify-content: center; /* 讓家族成員居中排列 */
-    padding: 0 60px;
-    width: 100%;
+    overflow: visible !important; 
+    z-index: 250; 
+    pointer-events: auto;
+    padding: 0 60px;     /* 給左右留一點雪人的空間 */
 }
 
 /* 1. 確保父容器有足夠空間，且不裁切內容 */
 .chibi-char {
     position: relative;
-    width: 60px;       /* 縮放後的視覺寬度 */
-    height: 100px;      /* 你希望角色站立的高度範圍 */
+    width: 90px;         
+    flex-shrink: 0 !important; /* 防止人物被擠壓變形或消失 */
     display: flex;
     justify-content: center;
-    align-items: flex-end; 
-    overflow: visible !important; /* 確保不被裁切 */
+    align-items: flex-end;
 }
 
 /* 對話框主體 */
