@@ -100,6 +100,7 @@
     .intro h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
     .intro p { margin: 6px 0 0; font-size: 15px; color: var(--muted); }
 
+
     /* Map Card */
     .map-card {
       background: var(--card);
@@ -110,6 +111,7 @@
       overflow: hidden;
       padding-bottom: 20px;
     }
+    
     .map-head {
       padding: 28px 28px 18px;
       display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
@@ -134,6 +136,14 @@
       border-color: rgba(255, 255, 255, 0.2);
       transform: translateY(-1px);
     }
+
+/* 🟢 解決點擊黑框：移除手機端高亮 */
+.pin, .day-chip, .snowman-btn, .chibi-char {
+    -webkit-tap-highlight-color: transparent !important;
+    outline: none !important;
+}
+
+
 
 
 /* 雪人按鈕 */
@@ -632,48 +642,27 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     /* -------------------------------------------
        ❄️ NEW: 家族互動底座樣式 (完全外掛，不影響排版)
        ------------------------------------------- */
-.footer-game-zone {
+
+/* 總容器：取消原本的 clip-path */
+.footer-game-zone-wrap {
     position: fixed;
-    bottom: 0; left: 0; width: 100%; height: 75px; /* 稍微調高，因為波浪會裁切掉一部分 */
+    bottom: 0; left: 0; width: 100%; height: 125px;
     z-index: 200;
-    display: flex; justify-content: center; align-items: flex-end;
-    padding-bottom: 30px;
     pointer-events: none;
-    
-    /* 主雪地：較前方的亮雪 */
-    background: linear-gradient(to bottom, #ffffff 0%, #e0f0ff 100%);
-    /* 關鍵：使用 clip-path 裁切出波浪弧度 */
-    clip-path: ellipse(120% 100% at 50% 100% 90);
-    filter: drop-shadow(0 -5px 10px rgba(114, 148, 241, 0.397));
-    user-select: none; /* 禁止選取文字 */
-    -webkit-user-select: none;
-    -webkit-touch-callout: none; /* 禁止手機長按彈出儲存圖片選單 */
-    -webkit-tap-highlight-color: transparent; /* 移除點擊時的藍色方框 */
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0); /* 🔴 補上這一行標準屬性，警告就會消失 */
 }
 
 
-.footer-game-zone::before {
-    content: "";
-    position: absolute;
-    top: 20px; left: 0; width: 100%; height: 100%;
-    /* 後方雪地：顏色稍深，製造層次感 */
-    background: linear-gradient(to bottom, #f0f8ff 0%, #c6e2ff 100%);
-    /* 後方的波浪弧度與前方錯開 */
-    clip-path: ellipse(150% 100% at 40% 100%);
-    z-index: -1;
-    opacity: 0.8;
+
+
+
+/* 雪人按鈕定位 */
+.snowman-btn {
+    position: absolute; bottom: 32px;
+    width: 80px; height: 80px;
+    z-index: 230; /* 🟢 確保在最前面 */
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
 }
-    .footer-game-zone * { pointer-events: auto; }
-
-
-    .snowman-btn {
-        position: absolute; bottom: 32px;
-        width: 80px; height: 80px;
-        cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        display: flex; flex-direction: column; align-items: center;
-    }
     .snowman-btn:hover { transform: scale(1.15); }
     .snowman-btn:active { transform: scale(0.9); }
     .snowman-btn.left { left: -4%; }
@@ -684,14 +673,28 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     -webkit-touch-callout: none; /* 再次確保角色與按鈕不會觸發長按菜單 */
 }
 
-    .family-line {
-        display: flex; 
-        gap: 5px; 
-        align-items: flex-end;
-        justify-content: center;
-        padding: 0 60px;
-        width: 100%;        
-    }
+/* 2. 人物層：浮在最上方，不被裁切 */
+.family-line {
+    position: absolute;
+    bottom: 22px; /* 🟢 調整這個值，讓角色腳底剛好踩在雪地弧線上 */
+    left: 0; width: 100%;
+    display: flex; justify-content: center;
+    overflow: visible !important; 
+    z-index: 220; 
+    pointer-events: auto;
+}
+
+/* 弧形雪地層：專心負責背景 */
+.snow-base-layer {
+    position: absolute;
+    bottom: 0; left: 0; width: 100%; height: 40px;
+    background: linear-gradient(to bottom, #ffffff 0%, #e0f0ff 100%);
+    clip-path: ellipse(190% 100% at 50% 100%); /* 🟢 標準平緩弧度 */
+    z-index: 9;
+    filter: drop-shadow(0 -5px 10px rgba(114, 148, 241, 0.3));
+}
+
+
 
 .chibi-char {
     position: relative;
@@ -1044,26 +1047,29 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     </div>
   </div>
 
+
+
+
+  
   <!-- -------------------------------------------
        ❄️ NEW: 家族互動底座 HTML 結構
        ------------------------------------------- -->
-  <div class="footer-game-zone">
-      <!-- 左雪人 -->
-<div class="snowman-btn left" onclick="attack('left')">
-    <img src="images/runners/snowman02.webp" alt="左雪人" style="width: 100%; height: auto;">
-    <span id="attack-tip" class="tip-bubble">點我可攻擊!</span>
+<div class="footer-game-zone-wrap">
+    
+    <div class="family-line" id="familyLine"></div>
+
+    <div class="snow-base-layer"></div>
+
+    <div class="snowman-btn left" onclick="attack('left')">
+        <img src="images/runners/snowman02.webp" alt="左雪人" style="width: 100%; height: auto;">
+        <span id="attack-tip" class="tip-bubble">點我可攻擊!</span>
+    </div>
+
+    <div class="snowman-btn right" onclick="attack('right')">
+        <img src="images/runners/snowman01.webp" alt="右雪人" style="width: 100%; height: auto;">
+    </div>
 </div>
 
-      <!-- 6 位家族 Q 版成員 -->
-      <div class="family-line" id="familyLine">
-          <!-- JS 將在這裡動態生成容器 -->
-      </div>
-
-      <!-- 右雪人 -->
-<div class="snowman-btn right" onclick="attack('right')">
-    <img src="images/runners/snowman01.webp" alt="右雪人" style="width: 100%; height: auto;">
-</div>
-  </div>
 
 
 
@@ -1148,8 +1154,11 @@ const CHIBI_DATA = [
 
 // 確保角色容器寬度足夠顯示縮放後的圖片
 function initInteractiveFooter() {
-    const container = document.getElementById('familyLine');
-    if (!container) return;
+    const container = document.getElementById('familyLine'); // 🟢 確認 ID 匹配
+    if (!container) {
+        console.log("找不到 familyLine 容器！");
+        return;
+    }
     
     container.innerHTML = CHIBI_DATA.map((char, i) => `
         <div class="chibi-char" id="chibi-${i}" title="${char.name}">
@@ -1157,6 +1166,9 @@ function initInteractiveFooter() {
         </div>
     `).join('');
 }
+
+// 頁面載入後啟動
+window.addEventListener('DOMContentLoaded', initInteractiveFooter);
 
 // 3. attack 函式就能讀到 CHIBI_DATA.length 了
 function attack(fromSide) {
@@ -1239,8 +1251,7 @@ function attack(fromSide) {
         }
     }
 
-    // 啟動腳底互動
-    initInteractiveFooter();
+ 
 
 
     /* --- 原本的 Pin 邏輯 (完全保留) --- */
