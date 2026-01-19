@@ -257,31 +257,38 @@
   margin: 12px auto 0;
   padding: 0 16px;
 }
-
+/* --- 樣式：復古打孔車票 --- */
 .day-nav-inner {
+  background: #fdf6e3; /* 象牙白車票色 */
+  border-radius: 12px;
+  padding: 10px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(28, 28, 30, 0.6);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  padding: 8px 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  /* 兩側打孔效果 */
+  mask-image: 
+    radial-gradient(circle at 0 50%, transparent 10px, black 11px),
+    radial-gradient(circle at 100% 50%, transparent 10px, black 11px);
 }
+
+.day-nav-inner::before {
+  content: "";
+  position: absolute;
+  left: 25%; right: 25%; top: 50%;
+  border-top: 1.5px dashed rgba(0,0,0,0.1); /* 撕票虛線 */
+  z-index: 1;
+}
+
 
 /* 按鈕主體 */
 .nav-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 12px;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.05);
+  background: white;
+  border: 1px solid #dcdcdc;
+  color: #333 !important;
+  font-family: "Courier New", monospace; /* 模擬打字機字體 */
+  z-index: 2;
 }
 
 .nav-btn:hover {
@@ -309,18 +316,17 @@
 }
 
 .current-day-badge .prefix {
-  font-size: 9px;
-  font-weight: 800;
-  color: var(--accent-blue);
-  letter-spacing: 1.5px;
-  margin-bottom: -2px;
+  color: rgba(0,0,0,0.5) !important;
+}
+
+.nav-btn .icon, .nav-btn .label, .current-day-badge .day-num {
+  color: #1c1c1e !important;
 }
 
 .current-day-badge .day-num {
-  font-size: 16px;
+  color: #1a1a1b;
   font-weight: 900;
-  letter-spacing: -0.5px;
-  color: #fff;
+  letter-spacing: 2px;
 }
 
 /* 針對沒有上一天/下一天的處理 (例如 Day0 沒有上一天) */

@@ -579,6 +579,36 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
 
 
 
+/* 返回按鈕樣式 */
+.back-home-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--line);
+    transition: all 0.3s ease;
+    text-decoration: none;
+    margin-right: 4px; /* 稍微推開標題 */
+}
+
+.back-home-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+    color: var(--accent);
+}
+
+/* 手機版微調 */
+@media (max-width: 500px) {
+    .topbar-inner {
+        padding: 12px 16px; /* 縮小一點間距 */
+    }
+}
+
+
 
 
 
@@ -960,6 +990,12 @@ position: absolute;
   <div class="app-wrap">
     <div class="topbar">
       <div class="topbar-inner">
+        <a href="index.html" class="back-home-btn" title="返回讀取頁">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+  </a>
+
         <div class="brand">
           <h1>旅行回憶｜哈爾濱</h1>
           <div class="meta">紀揚寶貝們的2025哈爾濱之旅</div>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>DAY1</title>
+  <title>中央大街｜回憶支線</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -247,10 +247,101 @@
 [data-who="yan"] { --avatar-bg: #19c0c0; }  /* 言 */
 [data-who="xu"]  { --avatar-bg: #949491; }  /* 徐 */
 
+
+
+/* --- 天數導航器 --- */
+.day-nav {
+  position: relative;
+  z-index: 50;
+  max-width: 650px;
+  margin: 12px auto 0;
+  padding: 0 16px;
+}
+
+.day-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(28, 28, 30, 0.6);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 按鈕主體 */
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.nav-btn .icon {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--accent-blue);
+}
+
+.nav-btn .label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* 中間目前的狀態 */
+.current-day-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.current-day-badge .prefix {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--accent-blue);
+  letter-spacing: 1.5px;
+  margin-bottom: -2px;
+}
+
+.current-day-badge .day-num {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  color: #fff;
+}
+
+/* 針對沒有上一天/下一天的處理 (例如 Day0 沒有上一天) */
+.nav-btn.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+@media (max-width: 400px) {
+  .nav-btn .label { display: none; } /* 手機太窄時隱藏文字只留箭頭 */
+  .day-nav-inner { padding: 8px 20px; }
+}
+
+
+
     /* Post Card */
     .post {
-      background: var(--card);
-      border: 1px solid var(--line);
+      background: rgba(28, 28, 30, 0.7); /* 半透明深色 */
+      backdrop-filter: blur(12px);      /* 關鍵：模糊後方的雪花 */
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: var(--radius);
       overflow: hidden;
       box-shadow: 0 10px 40px rgba(0,0,0,0.5);
@@ -290,6 +381,23 @@
       max-height: 500px; object-fit: contain;
     }
 
+
+.feed::before {
+    content: "";
+    position: absolute;
+    top: 20px;
+    left: 35px; /* 這裡要對齊你 avatar 的中心 */
+    width: 2px;
+    height: calc(100% - 100px);
+    background: linear-gradient(to bottom, var(--accent-blue), transparent);
+    z-index: 1;
+    opacity: 0.3;
+}
+
+
+
+
+    
     /* ---------------------------
       NEW: Mixed layouts
     --------------------------- */
@@ -663,16 +771,36 @@
 
   <canvas id="snowCanvas"></canvas>
 <script src="runners.js"></script>
-
   <div class="topbar">
     <div class="topbar-inner">
       <a class="back" href="home.html" aria-label="回到地圖首頁">← 回地圖首頁</a>
       <div class="title">
-        <h1>DAY1 廈門 → 哈爾濱</h1>
+        <h1>Day1 廈門 → 哈爾濱</h1>
         <div class="meta">左右滑相簿｜圖片可放大｜影片滑走暫停</div>
       </div>
     </div>
   </div>
+
+<div class="day-nav">
+  <div class="day-nav-inner">
+    <a href="day00.html" class="nav-btn prev">
+      <span class="icon">〈</span>
+      <span class="label">Day 0</span>
+    </a>
+
+    <div class="current-day-badge">
+      
+      <span class="day-num">DAY 1</span>
+    </div>
+
+    <a href="day02.html" class="nav-btn next">
+      <span class="label">Day 2</span>
+      <span class="icon">〉</span>
+    </a>
+  </div>
+</div>
+
+
 
   <!--<p class="hint">
     你要的「一篇可發 10 張、左右滑」已加上：相簿區塊用手指左右滑即可。<br/>
