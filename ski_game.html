@@ -89,7 +89,7 @@
         }
 
         #charSelect {
-            width: 95%;
+            width: 70%;
             max-width: 500px;
             margin: 10px auto 20px;
             display: flex;
@@ -99,14 +99,14 @@
             overflow: visible;
         }
 
-        .card-container {
-            width: 20%; /* 調整寬度，讓卡片更緊湊 */
-            min-width: 90px; /* 最小寬度調整 */
-            aspect-ratio: 152 / 260; /* 使用微調後的寬高比 */
-            cursor: pointer;
-            position: relative;
-            transition: transform 0.3s ease, filter 0.3s ease; /* 增加濾鏡過渡 */
-        }
+/* --- 卡片尺寸縮小，確保 3 欄能在一行排開 --- */
+.card-container {
+    width: 20%; /* 讓寬度適中，一行排 3 個 */
+    aspect-ratio: 151 / 260;
+    cursor: pointer;
+    position: relative;
+    perspective: 1000px;
+}
 
         .card-inner {
             position: relative;
@@ -250,27 +250,35 @@ h1.title-bounce {
 
     // 1. 更新角色資料（加入 icon 供 Canvas 使用）
     // 記得將 file 後綴改為 .webp
-    const CHARS = [
-        { name: "爸爸", file: "1", icon: "👨" }, 
-        { name: "媽媽", file: "2", icon: "👩" },
-        { name: "哥哥", file: "3", icon: "👦" }, 
-        { name: "言",   file: "4", icon: "👱" },
-        { name: "我",   file: "5", icon: "👧" }, 
-        { name: "弟",   file: "6", icon: "👶" },
-        { name: "Vi",   file: "7", icon: "👱‍♀️" }
-    ];
+const CHARS = [
+    { name: "爸", file: "1", hasBoard: true, boardType: "double" }, // 雙板
+    { name: "媽", file: "2", hasBoard: true, boardType: "double" }, // 單板
+    { name: "哥", file: "3", hasBoard: true, boardType: "single" }, // 雙板
+    { name: "言", file: "4", hasBoard: true, boardType: "double" }, // 單板
+    { name: "妹", file: "5", hasBoard: true, boardType: "double" }, // 雙板
+    { name: "弟", file: "6", hasBoard: true, boardType: "single" }, // 雙板
+    { name: "Vivi", file: "7", hasBoard: true, boardType: "single" } // 單板
+];
 
-// 建立一個物件來存放預載好的圖片
-const charImages = {};
+    const charImages = {};
+
 
 function preloadImages() {
     CHARS.forEach(c => {
         const img = new Image();
-        img.src = `images/ski/${c.file}.png`;
+        img.src = `images/ski/${c.file}.webp`;
         charImages[c.file] = img;
     });
 }
 preloadImages(); // 立即開始預載
+
+// --- 雪花噴濺效果變數 ---
+let particles = [];
+const MAX_PARTICLES = 100; // 最大粒子數量
+const PARTICLE_LIFESPAN = 30; // 粒子壽命 (影格數)
+
+
+
 
 
 
@@ -348,7 +356,7 @@ function loop() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 速度線
+    // --- 1. 背景速度線 ---
     ctx.strokeStyle = '#c5e2f7';
     ctx.lineWidth = 2;
     for(let i=0; i<6; i++) {
@@ -358,16 +366,7 @@ function loop() {
         ctx.stroke();
     }
 
-    // 障礙物
-    if(frame % Math.max(12, 30 - Math.floor(speed * 0.7)) === 0) {
-        const obstacleTypes = ['🌲', '🪨', '⛄', '❄️'];
-        obstacles.push({
-            x: Math.random() * (canvas.width - 80) + 40,
-            y: canvas.height + 100,
-            type: obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)]
-        });
-    }
-
+    // --- 2. 障礙物 ---
     obstacles.forEach((o, i) => {
         o.y -= speed;
         ctx.font = '45px serif';
@@ -388,42 +387,137 @@ function loop() {
         }
     });
 
-    // 繪製玩家角色 (關鍵修改區)
-    ctx.save();
-    ctx.translate(px, py);
-    // 根據移動方向旋轉
-    ctx.rotate(Math.max(-0.2, Math.min(0.2, (tx - px) * 0.05)));
-    
-    // 滑雪板
-    ctx.fillStyle = '#6edaff';
-    ctx.beginPath();
-    ctx.roundRect(-30, 30, 60, 10, 5); // 稍微調大一點配合 WebP
-    ctx.fill();
-
-    // 繪製 WebP 圖片代替 Emoji
-    const currentFile = CHARS[selectedIdx].file;
-    const img = charImages[currentFile];
-    
-    if (img && img.complete) {
-        // 設定圖片顯示大小 (保持比例)
-        const drawW = 60; 
-        const drawH = (260 / 152) * drawW; // 依據你的 152:260 比例
-        // 將圖片置中繪製，底部對齊滑雪板
-        ctx.drawImage(img, -drawW/2, -drawH + 35, drawW, drawH);
-    } else {
-        // 萬一圖片還沒載入好，用 Emoji 當備案
-        ctx.font = '60px sans-serif';
-        ctx.fillText(CHARS[selectedIdx].icon, 0, 10);
+    if(frame % Math.max(12, 30 - Math.floor(speed * 0.7)) === 0) {
+        obstacles.push({
+            x: Math.random() * (canvas.width - 80) + 40,
+            y: canvas.height + 100,
+            type: ['🌲', '🪨', '⛄', '❄️'][Math.floor(Math.random() * 4)]
+        });
     }
-    
+
+    // --- 3. 粒子數據更新 (不繪圖) ---
+    updateParticlesLogic();
+
+    // --- 4. 繪製玩家角色系統 ---
+    ctx.save();
+    ctx.translate(px, py); // 設定腳踝為原點 (0,0)
+
+    let tilt = Math.max(-0.2, Math.min(0.2, (tx - px) * 0.05));
+    let tipSwing = tilt * 30; 
+    let boardL = 45;
+
+    // A. 繪製雪花粒子 (相對人物座標)
+    drawParticlesRelative();
+
+    // B. 繪製滑雪板
+    if (CHARS[selectedIdx].hasBoard) {
+        ctx.save();
+        ctx.strokeStyle = '#3D3333';
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+
+        if (CHARS[selectedIdx].boardType === 'double') {
+            const gap = 8;
+            ctx.beginPath();
+            ctx.moveTo(-gap, -25); 
+            let boardL = 25;
+            ctx.lineTo(-gap + tipSwing, boardL);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(gap, -25);
+            
+            ctx.lineTo(gap + tipSwing, boardL);
+            ctx.stroke();
+
+            // 生成粒子
+            if (Math.abs(tilt) > 0.05) {
+                addParticle(-gap + tipSwing, 12, -2, 2);
+                addParticle(gap + tipSwing, 12, 2, 2);
+            }
+        } else {
+            // 單板
+            ctx.beginPath();
+            ctx.lineWidth = 25;
+            ctx.moveTo(0, -50); 
+            let boardL = 25;
+            ctx.lineTo(tipSwing, boardL);
+            ctx.stroke();
+
+            if (Math.abs(tilt) > 0.05) {
+                addParticle(tipSwing, 12, -tilt * 10, 2);
+            }
+        }
+        ctx.restore();
+    }
+
+    // C. 繪製角色 (最上層)
+    ctx.save();
+    ctx.rotate(tilt * 0.5); 
+    const currentImg = charImages[CHARS[selectedIdx].file];
+    if (currentImg && currentImg.complete && currentImg.naturalWidth !== 0) {
+        const drawW = 60;
+        const drawH = (260 / 152) * drawW;
+        ctx.drawImage(currentImg, -drawW/2, -drawH + 5, drawW, drawH);
+    } else {
+        ctx.font = '60px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom'; 
+        ctx.fillText(CHARS[selectedIdx].icon, 0, 5);
+    }
     ctx.restore();
+
+    ctx.restore(); // 結束 translate(px, py)
 
     requestAnimationFrame(loop);
 }
 
+// --- 粒子系統函數 (請確保只有這三組函數) ---
+
+function addParticle(x, y, vx, vy) {
+    if (particles.length < MAX_PARTICLES) {
+        particles.push({
+            x: x,
+            y: y,
+            vx: vx + (Math.random() - 0.5) * 2,
+            vy: vy + Math.random() * 3, 
+            life: PARTICLE_LIFESPAN,
+            radius: Math.random() * 3 + 1,
+            alpha: 1
+        });
+    }
+}
+
+function updateParticlesLogic() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.y -= speed * 0.5; // 雪地滑行向後感
+        p.life--;
+        p.alpha = p.life / PARTICLE_LIFESPAN;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+}
+
+function drawParticlesRelative() {
+    particles.forEach(p => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+        ctx.fill();
+        ctx.restore();
+    });
+}
 window.onresize = resize;
 resize();
 initCharSelect();
+
+
+
+
+
 </script>
 
 </body>
