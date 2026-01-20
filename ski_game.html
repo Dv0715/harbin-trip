@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>哈爾濱支線｜滑雪大冒險</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            margin: 0; 
+            background: #0a0c12; 
+            color: white; 
+            font-family: 'Inter', sans-serif; /* 更改字體 */
+            overflow: hidden; 
+            touch-action: none; 
+        }
+
+        /* 雪景背景 - 關鍵 CSS */
+        .snow-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                /* 山脈層次 */
+                linear-gradient(to top, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0) 10%),
+                url('https://i.imgur.com/your-mountain-range-1.png') no-repeat center bottom / 100% auto, /* 較遠的山 */
+                url('https://i.imgur.com/your-mountain-range-2.png') no-repeat center bottom / 120% auto, /* 較近的山，稍微大一點 */
+                linear-gradient(to bottom, #d6e2f0, #e0f2f7); /* 天空漸變 */
+            background-size: cover, cover, cover, cover; /* 確保背景圖都能適應 */
+            background-position: center bottom;
+            z-index: -1; /* 確保在最底層 */
+        }
+        /* 替換 placeholder 圖片，這裡我用 imgur 連結作為範例 */
+        /* 您可以上傳自己的山脈圖片並替換連結 */
+        .snow-bg {
+            background-image: 
+                linear-gradient(to bottom, #d6e2f0, #e0f2f7), /* 天空漸變 */
+                url('https://i.imgur.com/P5j1w1h.png'), /* 山脈圖層 1 */
+                url('https://i.imgur.com/O61WJ7b.png'); /* 山脈圖層 2 */
+            background-repeat: no-repeat;
+            background-size: 100% 100%, 150% auto, 120% auto; /* 天空、遠山、近山 */
+            background-position: center bottom;
+        }
+
+
+        #gameCanvas { 
+            background: none; /* 讓 canvas 背景透明，透出雪景 */
+            display: block; 
+            margin: 0 auto; 
+            cursor: crosshair; 
+        } 
+        .ui-panel { 
+            position: fixed; 
+            inset: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 100; 
+            pointer-events: none; 
+            background: rgba(0,0,0,0.6); /* 半透明黑底，讓背景隱約可見 */
+            backdrop-filter: blur(5px); /* 模糊效果 */
+        }
+        
+        /* 美化按鈕 */
+        .btn-action { 
+            pointer-events: auto; 
+            background: linear-gradient(145deg, #007bff, #0056b3); /* 漸變藍色 */
+            color: white; 
+            padding: 14px 40px; /* 增加內距 */
+            border-radius: 99px; 
+            font-weight: bold; 
+            font-size: 1.25rem; /* 增加字體大小 */
+            letter-spacing: 1px; /* 增加字距 */
+            transition: all 0.2s ease-in-out; 
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.4); /* 陰影 */
+            border: none;
+            cursor: pointer;
+        }
+        .btn-action:hover {
+            transform: translateY(-3px); /* 懸停時輕微上浮 */
+            box-shadow: 0 12px 25px rgba(0, 123, 255, 0.5);
+        }
+        .btn-action:active { 
+            transform: scale(0.95); /* 點擊時縮小 */
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+        }
+
+        #charSelect {
+            width: 95%;
+            max-width: 500px;
+            margin: 10px auto 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px; /* 稍微增加間距 */
+            overflow: visible;
+        }
+
+        .card-container {
+            width: 20%; /* 調整寬度，讓卡片更緊湊 */
+            min-width: 90px; /* 最小寬度調整 */
+            aspect-ratio: 152 / 260; /* 使用微調後的寬高比 */
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.3s ease, filter 0.3s ease; /* 增加濾鏡過渡 */
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .card-container.is-selected .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-container.is-selected {
+            filter: drop-shadow(0 0 15px #e5a400); /* 更明顯的選中陰影 */
+            transform: scale(1.15); /* 稍微放大一點 */
+            z-index: 10;
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%; height: 100%;
+            backface-visibility: hidden;
+            border-radius: 12px; /* 圓角再大一點 */
+            background: none !important;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0); /* 更明顯的陰影 */
+            border: 1px solid rgba(255, 255, 255, 0); /* 淺色邊框 */
+            overflow: hidden; /* 確保內容不超出圓角 */
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #007bff, #0056b3); /* 背面也用漸變 */
+            transform: rotateY(180deg);
+        }
+
+        .card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 1; /* 圖片不透明 */
+            display: block; /* 移除圖片底部的空白 */
+        }
+
+        .card-label {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0,0,0,0.75); /* 更深的背景色 */
+            color: white;
+            font-size: 11px; /* 字體稍微調大 */
+            padding: 4px 0; /* 增加內距 */
+            backdrop-filter: blur(3px); /* 模糊效果更強 */
+            border-bottom-left-radius: 12px; /* 配合卡片圓角 */
+            border-bottom-right-radius: 12px;
+            font-weight: 600; /* 加粗 */
+        }
+
+        /* 分數顯示優化 */
+        #liveScore {
+            font-family: 'Space Mono', monospace; /* 使用等寬字體更具科技感 */
+            font-size: 2.5rem; /* 更大 */
+            font-weight: bold;
+            color: #6edaff; /* 淺藍色 */
+            text-shadow: 0 0 10px rgba(110, 218, 255, 0.7); /* 發光效果 */
+        }
+        .score-panel {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* 標題動畫 */
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            60% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .title-bounce {
+            animation: bounceIn 0.8s ease-out forwards;
+        }
+        /* 修改標題字體 */
+h1.title-bounce {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-style: italic; /* 斜體增加速度感 */
+    color: #93c5fd; /* 淺藍色 */
+    /* 加入多重陰影效果 */
+    text-shadow: 
+        2px 2px 0px #1e3a8a, 
+        4px 4px 15px rgba(0,0,0,0.5);
+}
+
+/* 修改下方的「急速俯衝版本」 */
+#uiStart p {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    letter-spacing: 4px; /* 增加字距營造高級感 */
+}
+
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Kanit:ital,wght@1,900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="snow-bg"></div>
+
+<div id="uiStart" class="ui-panel pointer-events-auto">
+
+
+
+    <h1 class="text-5xl font-black italic mb-3 text-blue-300 title-bounce">滑雪挑戰GO！🧊</h1>
+    <p class="text-gray-300 mb-10 text-sm uppercase tracking-widest">❄️ 亞布力特別版 ❄️</p>
+    
+    <div id="charSelect"></div>
+
+    <button onclick="start()" class="btn-action text-xl px-12 py-4">開始滑雪</button>
+</div>
+
+<div id="uiOver" class="ui-panel hidden pointer-events-auto">
+    <h2 class="text-6xl font-black text-red-400 mb-4 italic bounce-in">摔倒了！</h2>
+    <p class="text-2xl mb-10 text-gray-200">得分: <span id="finalScore" class="font-bold text-yellow-300">0</span></p>
+    <button onclick="location.reload()" class="btn-action text-xl px-10 py-3 bg-red-600 hover:bg-red-700">重新開始</button>
+</div>
+
+<div class="fixed top-6 left-0 right-0 text-center z-50 pointer-events-none">
+    <div class="inline-block score-panel px-6 py-2 rounded-full">
+        <span id="liveScore">0</span>
+    </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 1. 更新角色資料（加入 icon 供 Canvas 使用）
+    // 記得將 file 後綴改為 .webp
+    const CHARS = [
+        { name: "爸爸", file: "1", icon: "👨" }, 
+        { name: "媽媽", file: "2", icon: "👩" },
+        { name: "哥哥", file: "3", icon: "👦" }, 
+        { name: "言",   file: "4", icon: "👱" },
+        { name: "我",   file: "5", icon: "👧" }, 
+        { name: "弟",   file: "6", icon: "👶" },
+        { name: "Vi",   file: "7", icon: "👱‍♀️" }
+    ];
+
+// 建立一個物件來存放預載好的圖片
+const charImages = {};
+
+function preloadImages() {
+    CHARS.forEach(c => {
+        const img = new Image();
+        img.src = `images/ski/${c.file}.png`;
+        charImages[c.file] = img;
+    });
+}
+preloadImages(); // 立即開始預載
+
+
+
+let selectedIdx = 4;
+let running = false;
+let score = 0;
+let px, py = 150, tx;
+let speed = 7;
+let obstacles = [];
+let frame = 0;
+
+function initCharSelect() {
+    const menu = document.getElementById('charSelect');
+    menu.innerHTML = "";
+    menu.style.display = "flex";
+    menu.style.flexWrap = "wrap";
+    menu.style.justifyContent = "center";
+
+    CHARS.forEach((c, i) => {
+        const container = document.createElement('div');
+        container.className = `card-container ${i === selectedIdx ? 'is-selected' : ''}`;
+        container.id = `char-card-${i}`;
+        
+        container.innerHTML = `
+            <div class="card-inner">
+                <div class="card-front">
+                    <img src="images/char/${c.file}.webp" class="card-img" alt="${c.name}">
+                    <div class="card-label">${c.name}</div>
+                </div>
+                <div class="card-back">
+                    <img src="images/char/${c.file}_real.webp" class="card-img" 
+                            onerror="this.src='https://placehold.co/152x260/0056b3/white?text=${c.name}Real'; this.style.backgroundColor='#0056b3';">
+                    <div class="card-label">READY!</div>
+                </div>
+            </div>
+        `;
+
+        container.onclick = () => {
+            document.querySelectorAll('.card-container').forEach(el => el.classList.remove('is-selected'));
+            selectedIdx = i;
+            container.classList.add('is-selected');
+        };
+        menu.appendChild(container);
+    });
+}
+
+function resize() {
+    canvas.width = Math.min(window.innerWidth, 500);
+    canvas.height = window.innerHeight;
+    px = tx = canvas.width / 2;
+}
+
+function start() {
+    document.getElementById('uiStart').classList.add('hidden');
+    obstacles = [];
+    score = 0;
+    speed = 7;
+    running = true;
+    loop();
+}
+
+const move = (ex) => {
+    if(!running) return;
+    const r = canvas.getBoundingClientRect();
+    tx = (ex - r.left) * (canvas.width / r.width);
+    tx = Math.max(40, Math.min(canvas.width-40, tx));
+};
+window.addEventListener('mousemove', e => move(e.clientX));
+window.addEventListener('touchmove', e => move(e.touches[0].clientX));
+
+function loop() {
+    if(!running) return;
+    frame++;
+    px += (tx - px) * 0.12;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 速度線
+    ctx.strokeStyle = '#c5e2f7';
+    ctx.lineWidth = 2;
+    for(let i=0; i<6; i++) {
+        let ly = (frame * speed * 0.8 + i * 150) % (canvas.height + 150);
+        ctx.beginPath();
+        ctx.moveTo(i * canvas.width / 5, ly - 50); ctx.lineTo(i * canvas.width / 5, ly + 50);
+        ctx.stroke();
+    }
+
+    // 障礙物
+    if(frame % Math.max(12, 30 - Math.floor(speed * 0.7)) === 0) {
+        const obstacleTypes = ['🌲', '🪨', '⛄', '❄️'];
+        obstacles.push({
+            x: Math.random() * (canvas.width - 80) + 40,
+            y: canvas.height + 100,
+            type: obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)]
+        });
+    }
+
+    obstacles.forEach((o, i) => {
+        o.y -= speed;
+        ctx.font = '45px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(o.type, o.x, o.y);
+
+        if(Math.hypot(px - o.x, py - o.y) < 35) {
+            running = false;
+            document.getElementById('uiOver').classList.remove('hidden');
+            document.getElementById('finalScore').textContent = score;
+        }
+
+        if(o.y < -100) {
+            obstacles.splice(i, 1);
+            score++;
+            document.getElementById('liveScore').textContent = score;
+            if(score % 5 === 0) speed += 0.3;
+        }
+    });
+
+    // 繪製玩家角色 (關鍵修改區)
+    ctx.save();
+    ctx.translate(px, py);
+    // 根據移動方向旋轉
+    ctx.rotate(Math.max(-0.2, Math.min(0.2, (tx - px) * 0.05)));
+    
+    // 滑雪板
+    ctx.fillStyle = '#6edaff';
+    ctx.beginPath();
+    ctx.roundRect(-30, 30, 60, 10, 5); // 稍微調大一點配合 WebP
+    ctx.fill();
+
+    // 繪製 WebP 圖片代替 Emoji
+    const currentFile = CHARS[selectedIdx].file;
+    const img = charImages[currentFile];
+    
+    if (img && img.complete) {
+        // 設定圖片顯示大小 (保持比例)
+        const drawW = 60; 
+        const drawH = (260 / 152) * drawW; // 依據你的 152:260 比例
+        // 將圖片置中繪製，底部對齊滑雪板
+        ctx.drawImage(img, -drawW/2, -drawH + 35, drawW, drawH);
+    } else {
+        // 萬一圖片還沒載入好，用 Emoji 當備案
+        ctx.font = '60px sans-serif';
+        ctx.fillText(CHARS[selectedIdx].icon, 0, 10);
+    }
+    
+    ctx.restore();
+
+    requestAnimationFrame(loop);
+}
+
+window.onresize = resize;
+resize();
+initCharSelect();
+</script>
+
+</body>
+</html>
