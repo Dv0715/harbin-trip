@@ -609,6 +609,105 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     }
 }
 
+/* 頂部導航膠囊強化 */
+.pill-game {
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    color: #000 !important;
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    animation: pill-glow 2s infinite alternate;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+@keyframes pill-glow {
+    from { box-shadow: 0 0 5px rgba(255, 215, 0, 0.3); transform: scale(1); }
+    to { box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); transform: scale(1.05); }
+}
+
+
+
+/* 滑雪遊戲專屬強化按鈕 */
+.ski-game-entrance {
+    margin: 0 20px 20px;
+    display: block;
+    text-decoration: none;
+}
+
+.ski-btn-premium {
+    position: relative;
+    width: 100%;
+    padding: 8px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    /* 外發光效果 */
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+}
+
+.ski-btn-premium:hover {
+    transform: translateY(-3px);
+    border-color: #ffd700;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+}
+
+.ski-btn-icon {
+    font-size: 20px;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+}
+
+.ski-btn-text {
+    text-align: left;
+}
+
+.ski-btn-text .main {
+    display: block;
+    color: #ffd700;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.ski-btn-text .sub {
+    display: block;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* 掃光動畫效果 */
+.ski-btn-premium::before {
+    content: "";
+    position: absolute;
+    top: 0; left: -100%;
+    width: 50%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255, 215, 0, 0.2), transparent);
+    transform: skewX(-25deg);
+    animation: ski-shine 3s infinite;
+}
+
+@keyframes ski-shine {
+    0% { left: -100%; }
+    20% { left: 150%; }
+    100% { left: 150%; }
+}
+
+
+
 
 
 
@@ -1001,7 +1100,16 @@ position: absolute;
           <h1>旅行回憶｜哈爾濱</h1>
           <div class="meta">紀揚寶貝們的2025哈爾濱之旅</div>
         </div>
-        <div class="pill">6 DAYS</div>
+<div class="ski-game-entrance">
+    <a href="javascript:void(0)" onclick="openSkiGame()" class="ski-btn-premium">
+        <div class="ski-btn-icon">⛷️</div>
+        <div class="ski-btn-text">
+            <span class="main">滑雪挑戰GO！</span>
+          
+        </div>
+        <div class="ski-btn-icon" style="font-size: 20px; opacity: 0.5;">🎮</div>
+    </a>
+</div>
       </div>
     </div>
 
@@ -1087,11 +1195,13 @@ position: absolute;
         <a href="day03.html" class="day-chip chip-frozen">Day 3 雪鄉 ☃</a>
         <a href="day04.html" class="day-chip chip-frozen">Day 4 冰雪大世界🧊 </a>
         <a href="day05.html" class="day-chip chip-warm">Day 5 廈門 🏠</a>
-        <a href="javascript:void(0)" onclick="openSkiGame()" class="day-chip" style="background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%); color: #000; border-color: #fff; box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);">
-    ⛷️ 滑雪大冒險 (挑戰版)
-</a>
+          
+
     </div>
 </div>
+
+
+
 
 
 <div class="video-dock" id="videoDock" style="display: flex !important;">
