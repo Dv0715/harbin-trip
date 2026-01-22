@@ -37,6 +37,13 @@
         .score-panel::before { content: "分數"; font-size: 10px; font-weight: 900; color: rgba(255, 255, 255, 0.6); letter-spacing: 1px; }
         h1.title-bounce { font-weight: 900; font-style: italic; color: #93c5fd; text-shadow: 2px 2px 0px #1e3a8a, 4px 4px 15px rgba(0,0,0,0.5); }
         
+        @keyframes medal-zoom {
+            0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+            70% { transform: scale(1.2) rotate(10deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        #medalIcon { animation: medal-zoom 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
         @keyframes score-pop {
             0% { transform: scale(1); }
             50% { transform: scale(1.3); color: #ffeb3b; }
@@ -44,42 +51,37 @@
         }
         .score-bounce { animation: score-pop 0.3s ease-out; }
 
-
-canvas {
-    touch-action: none; /* 💡 禁止瀏覽器處理所有手勢，全權交給 JavaScript */
-    user-select: none;  /* 防止長按選取文字 */
-    -webkit-tap-highlight-color: rgba(0,0,0,0); /* 移除 iOS 點擊灰色方塊 */
-}
-
-
+        canvas { touch-action: none; user-select: none; -webkit-tap-highlight-color: rgba(0,0,0,0); }
     </style>
 </head>
 <body>
 
-<div class="snow-bg"></div>
-<div id="uiStart" class="ui-panel pointer-events-auto">
-    <h1 class="text-5xl font-black italic mb-3 text-blue-300 title-bounce">滑雪挑戰GO！🧊</h1>
-    <p class="text-gray-300 mb-10 text-sm tracking-widest uppercase">❄️ Yabuli Special Edition ❄️</p>
-    <div id="charSelect"></div>
-    <button onclick="start()" class="btn-action text-xl px-12 py-4">開始滑雪</button>
-</div>
-<div id="uiOver" class="ui-panel hidden pointer-events-auto">
-    <h2 class="text-6xl font-black text-red-400 mb-4 italic">摔倒了！</h2>
-    <p class="text-2xl mb-10">最終得分: <span id="finalScore" class="text-yellow-300">0</span></p>
-    <button onclick="location.reload()" class="btn-action bg-red-600">重新挑戰</button>
-</div>
-<div class="score-panel"><span id="liveScore">0</span></div>
-<canvas id="gameCanvas"></canvas>
+    <div class="snow-bg"></div>
+    <div id="uiStart" class="ui-panel pointer-events-auto">
+        <h1 class="text-5xl font-black italic mb-3 text-blue-300 title-bounce">滑雪挑戰GO！🧊</h1>
+        <p class="text-gray-300 mb-10 text-sm tracking-widest uppercase">❄️ Yabuli Special Edition ❄️</p>
+        <div id="charSelect"></div>
+        <button onclick="start()" class="btn-action text-xl px-12 py-4">開始滑雪</button>
+    </div>
+
+    <div id="uiOver" class="ui-panel hidden pointer-events-auto text-center">
+        <div id="medalIcon" class="text-8xl mb-4 drop-shadow-lg"></div>
+        <div id="medalTitle" class="text-3xl font-bold mb-2 drop-shadow-md"></div>
+        <h2 class="text-5xl font-black text-red-400 mb-2 italic">摔倒了！</h2>
+        <p class="text-2xl mb-8">最終得分: <span id="finalScore" class="text-white font-bold">0</span></p>
+        <button onclick="location.reload()" class="btn-action bg-red-600">重新挑戰</button>
+    </div>
+
+    <div class="score-panel"><span id="liveScore">0</span></div>
+    <canvas id="gameCanvas"></canvas>
 
 <script>
-let items = [], particles = [], obstacles = [];
+    let items = [], particles = [], obstacles = [], snowballs = [];
     let powerUpTimer = 0, stormMode = false, stormTimer = 0, friction = 0.12; 
-    let selectedIdx = 4, running = false, score = 0, frame = 0, speed = 7, px, py = 150, tx, fogAlpha = 0;
-    let comboCount = 0;
-    let comboScale = 1; 
-    let lives = 5;       
-    const MAX_LIVES = 5; 
-    let invincibilityTimer = 0; 
+    let selectedIdx = 4, running = false, score = 0, frame = 0, speed = 7, px, py = 150, tx;
+    let comboCount = 0, comboScale = 1, lives = 5, heartTimer = 0, invincibilityTimer = 0;
+    const MAX_LIVES = 5;
+    let highScore = localStorage.getItem('skiHighScore') || 0;
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -94,12 +96,10 @@ let items = [], particles = [], obstacles = [];
         { name: "Vivi", file: "7", boardType: "single", size: 55, faceY: 0.6065, faceScale: 0.5, faceX: -0.005 }
     ];
 
-    const FACES = ['n', 's', 'h', 'e', 'd']; 
+    const FACES = ['n', 's', 'h', 'e', 'd', 'b']; 
     const OBSTACLE_FILES = ['1.webp', '2.webp', '3.webp'];
     const charImages = {}, obsImages = {};
-    const OBSTACLE_CONFIG = {
-        '1.webp': { w: 70, h: 60, r: 35 }, '2.webp': { w: 50, h: 50, r: 35 }, '3.webp': { w: 70, h: 90, r: 35 }
-    };
+    const OBSTACLE_CONFIG = { '1.webp': { w: 70, h: 60, r: 35 }, '2.webp': { w: 50, h: 50, r: 35 }, '3.webp': { w: 70, h: 90, r: 35 } };
 
     function preloadAssets() {
         CHARS.forEach(c => {
@@ -124,11 +124,7 @@ let items = [], particles = [], obstacles = [];
         const liveScoreEl = document.getElementById('liveScore');
         if (liveScoreEl) liveScoreEl.textContent = score;
         const scoreEl = document.querySelector('.score-panel');
-        if (scoreEl) {
-            scoreEl.classList.remove('score-bounce');
-            void scoreEl.offsetWidth;
-            scoreEl.classList.add('score-bounce');
-        }
+        if (scoreEl) { scoreEl.classList.remove('score-bounce'); void scoreEl.offsetWidth; scoreEl.classList.add('score-bounce'); }
     }
 
     function initCharSelect() {
@@ -158,8 +154,9 @@ let items = [], particles = [], obstacles = [];
         resize(); 
         document.getElementById('uiStart').classList.add('hidden');
         document.getElementById('uiOver').classList.add('hidden');
+        highScore = localStorage.getItem('skiHighScore') || 0;
         running = true; score = 0; lives = 5; comboCount = 0; speed = 7; 
-        obstacles = []; items = []; particles = []; invincibilityTimer = 0;
+        obstacles = []; items = []; particles = []; snowballs = [];
         px = tx = canvas.width / 2;
         loop();
     }
@@ -167,20 +164,18 @@ let items = [], particles = [], obstacles = [];
     const move = (e) => {
         if(!running) return;
         let clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
-        if (e.touches && e.cancelable) e.preventDefault();
         const r = canvas.getBoundingClientRect();
         tx = Math.max(40, Math.min(canvas.width-40, (clientX - r.left) * (canvas.width / r.width)));
     };
-
     window.addEventListener('mousemove', move);
     window.addEventListener('touchmove', move, { passive: false });
     window.addEventListener('touchstart', move, { passive: false });
 
-function loop() {
+    function loop() {
         if(!running) return;
         frame++; 
-        
-        if (powerUpTimer > 0) { powerUpTimer--; speed += 0.05; friction = 0.2; }
+
+        if (powerUpTimer > 0) { powerUpTimer--; friction = 0.15; }
         else if (stormMode) { speed += 0.03; friction = 0.06; }
         else { friction = 0.12; }
         
@@ -200,18 +195,23 @@ function loop() {
         }
         ctx.restore();
 
-        // 2. 道具 (吃到切換 e 表情)
-        if(frame % 200 === 0) items.push({ x: Math.random() * (canvas.width - 80) + 40, y: canvas.height + 100, type: '🍡' });
+        // 2. 道具
+        if(frame % 250 === 0) {
+            const type = Math.random() > 0.7 ? '⭐' : '❤️';
+            items.push({ x: Math.random() * (canvas.width - 80) + 40, y: canvas.height + 100, type: type });
+        }
         for (let i = items.length - 1; i >= 0; i--) {
             let item = items[i]; item.y -= speed;
             ctx.font = '40px serif'; ctx.textAlign = 'center';
             ctx.fillText(item.type, item.x, item.y);
-            if(Math.hypot(px - item.x, py - item.y) < 40) { 
-                items.splice(i, 1); powerUpTimer = 90; updateScore(10); 
+            if(Math.hypot(px - item.x, py - item.y) < 45) { 
+                if (item.type === '❤️') { if (lives < MAX_LIVES) lives++; updateScore(5); heartTimer = 40; }
+                else if (item.type === '⭐') { powerUpTimer = 180; updateScore(20); }
+                items.splice(i, 1); 
             } else if(item.y < -100) { items.splice(i, 1); }
         }
 
-        // 3. 障礙物 (撞到切換 d 表情)
+        // 3. 障礙物
         if(frame % Math.max(15, 40 - Math.floor(speed * 0.7)) === 0) {
             const file = OBSTACLE_FILES[Math.floor(Math.random() * OBSTACLE_FILES.length)];
             obstacles.push({ x: Math.random() * (canvas.width - 80) + 40, y: canvas.height + 100, file: file });
@@ -224,122 +224,195 @@ function loop() {
             if (powerUpTimer > 0 && Math.hypot(px - o.x, py - o.y) < config.r + 20) ctx.globalAlpha = 0.3;
             if (img && img.complete) ctx.drawImage(img, o.x - config.w / 2, o.y - config.h / 2, config.w, config.h);
             ctx.restore();
-
             if (powerUpTimer <= 0 && invincibilityTimer <= 0 && Math.hypot(px - o.x, py - o.y) < config.r) {
                 lives--; comboCount = 0; obstacles.splice(i, 1); invincibilityTimer = 60;
-                if (lives <= 0) {
-                    running = false; document.getElementById('uiOver').classList.remove('hidden');
-                    document.getElementById('finalScore').textContent = score;
-                }
-            } else if(o.y < -150) { 
-                obstacles.splice(i, 1); updateScore(1); if(score % 5 === 0) speed += 0.2; 
+                if (lives <= 0) triggerGameOver(); 
+            } else if(o.y < -150) { obstacles.splice(i, 1); updateScore(1); if(score % 5 === 0) speed += 0.2; }
+        }
+
+// --- 4. 雪球提示與生成邏輯 ---
+        if (score >= 300) {
+            // 提示文字：確保這段在 loop 裡會被執行到
+            if (score < 315) {
+                ctx.save(); 
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置座標系確保畫在螢幕中央
+                ctx.fillStyle = (frame % 20 < 10) ? "#ffffff" : "#3b82f6";
+                ctx.font = "bold 35px Inter"; 
+                ctx.textAlign = "center"; 
+                ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 10;
+                ctx.fillText("⚠️ 注意巨大雪球 ⚠️", canvas.width / 2, canvas.height / 2); 
+                ctx.restore();
+            }
+
+            // 每 350 幀生成一顆新雪球
+            if(frame % 350 === 0) {
+                snowballs.push({ x: Math.random() * (canvas.width - 100) + 50, y: canvas.height + 100, radius: 15, growth: 0.15 });
             }
         }
 
-        // 4. 玩家人物總成
-        updateParticlesLogic();
-        ctx.save(); 
-        
-        // --- 💡 全人物閃爍判定 (包含雪板、固定器、身體) ---
-        if (invincibilityTimer > 0) {
-            invincibilityTimer--;
-            if (frame % 6 < 3) ctx.globalAlpha = 0.2; // 調整閃爍頻率更俐落
+        // 移動與碰撞判定 (放在 score >= 300 之外，確保產生的雪球會持續移動)
+        for (let i = snowballs.length - 1; i >= 0; i--) {
+            let b = snowballs[i];
+            b.y -= speed * 0.7; b.radius += b.growth;
+            
+            ctx.save();
+            let grad = ctx.createRadialGradient(b.x - b.radius/3, b.y - b.radius/3, b.radius/4, b.x, b.y, b.radius);
+            grad.addColorStop(0, '#ffffff'); grad.addColorStop(1, '#d1e9ff');
+            ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius * 0.8, 0, Math.PI * 0.5); ctx.stroke();
+            ctx.restore();
+
+            if (powerUpTimer <= 0 && invincibilityTimer <= 0 && Math.hypot(px - b.x, py - b.y) < b.radius + 10) {
+                lives--; comboCount = 0; snowballs.splice(i, 1); invincibilityTimer = 60;
+                if (lives <= 0) triggerGameOver();
+            } else if(b.y < -150) { 
+                snowballs.splice(i, 1); updateScore(10); 
+            }
         }
 
+        // 繪製與移動邏輯：這段必須放在 score >= 300 的大括號「外面」，
+        // 這樣一旦雪球產生了，即使分數繼續增加，它們也會持續移動。
+        for (let i = snowballs.length - 1; i >= 0; i--) {
+            let b = snowballs[i];
+            b.y -= speed * 0.7; // 向上移動（營造向下衝的效果）
+            b.radius += b.growth; // 越滾越大
+            
+            ctx.save();
+            let grad = ctx.createRadialGradient(b.x - b.radius/3, b.y - b.radius/3, b.radius/4, b.x, b.y, b.radius);
+            grad.addColorStop(0, '#ffffff'); 
+            grad.addColorStop(1, '#d1e9ff');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 雪球表面的旋轉線條感
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius * 0.8, 0, Math.PI * 0.5);
+            ctx.stroke();
+            ctx.restore();
+
+            // 碰撞偵測
+            if (powerUpTimer <= 0 && invincibilityTimer <= 0 && Math.hypot(px - b.x, py - b.y) < b.radius + 10) {
+                lives--; 
+                comboCount = 0; 
+                snowballs.splice(i, 1); 
+                invincibilityTimer = 60;
+                if (lives <= 0) triggerGameOver();
+            } else if(b.y < -150) { 
+                // 雪球離開畫面
+                snowballs.splice(i, 1); 
+                updateScore(10); 
+            }
+        }
+
+        // 5. 玩家渲染
+        updateParticlesLogic();
+        ctx.save(); 
+        if (invincibilityTimer > 0) { invincibilityTimer--; if (frame % 6 < 3) ctx.globalAlpha = 0.2; }
         if (stormMode) ctx.translate((Math.random()-0.5)*5, (Math.random()-0.5)*5);
         ctx.translate(px, py);
         let tilt = Math.max(-0.2, Math.min(0.2, (tx - px) * 0.05));
         let tipSwing = tilt * 30;
         drawParticlesRelative();
         
-        // A. 雪板
-        ctx.save(); 
-        ctx.strokeStyle = '#3D3333'; ctx.lineWidth = (CHARS[selectedIdx].boardType === 'double') ? 10 : 25; ctx.lineCap = 'round';
+        // 雪板
+        ctx.save(); ctx.strokeStyle = '#3D3333'; ctx.lineWidth = (CHARS[selectedIdx].boardType === 'double') ? 10 : 25; ctx.lineCap = 'round';
         if (CHARS[selectedIdx].boardType === 'double') {
-            const gap = 10;
-            ctx.beginPath(); ctx.moveTo(-gap, -25); ctx.lineTo(-gap + tipSwing, 25); ctx.stroke();
+            const gap = 10; ctx.beginPath(); ctx.moveTo(-gap, -25); ctx.lineTo(-gap + tipSwing, 25); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(gap, -25); ctx.lineTo(gap + tipSwing, 25); ctx.stroke();
-        } else {
-            ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(tipSwing, 24); ctx.stroke();
-        }
+        } else { ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(tipSwing, 24); ctx.stroke(); }
         ctx.restore();
 
-        // B. 表情判定邏輯 (依照您的新規則)
-        // 優先權：1. 遊戲結束/撞到(d) > 2. 吃到糖葫蘆(e) > 3. 暴風雪(s) > 4. 隨機笑容(h) > 5. 正常(n)
+        // 表情判定
+        if (heartTimer > 0) heartTimer--;
         let faceSuffix = "n";
-        if (!running || invincibilityTimer > 0) faceSuffix = "d";
-        else if (powerUpTimer > 0) faceSuffix = "e";
-        else if (stormMode) faceSuffix = "s";
-        else if (score > 0 && score % 15 <= 3) faceSuffix = "h"; // 調低笑容頻率
+        if (!running || invincibilityTimer > 0) faceSuffix = "d"; 
+        else if (powerUpTimer > 0) faceSuffix = "e"; 
+        else if (heartTimer > 0) faceSuffix = "b"; 
+        else if (stormMode) faceSuffix = "s"; 
+        else if (score > 0 && score % 15 <= 3) faceSuffix = "h";
 
         const charData = CHARS[selectedIdx], charID = charData.file;
         const bodyImg = charImages[charID], faceImg = charImages[`${charID}_${faceSuffix}`];
         const drawW = charData.size || 70, drawH = (260 / 152) * drawW;
 
         ctx.save();
-        let breath = Math.sin(frame * 0.15) * 2; 
-        ctx.translate(0, breath); ctx.rotate(tilt * 0.5); 
-
+        let breath = Math.sin(frame * 0.15) * 2; ctx.translate(0, breath); ctx.rotate(tilt * 0.5); 
         if (bodyImg && bodyImg.complete) {
-            if (powerUpTimer > 0) { 
-                ctx.filter = (frame % 4 < 2) ? 'brightness(1.5) sepia(0.5)' : 'none'; 
-                ctx.shadowBlur = 15; ctx.shadowColor = "rgba(255, 215, 0, 0.8)"; 
+            if (heartTimer > 20) { 
+                ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.translate(px, py); ctx.fillStyle = "#ff4d4d"; ctx.font = `bold ${Math.floor(drawW * 0.4)}px Inter`;
+                ctx.shadowColor = "white"; ctx.shadowBlur = 5; ctx.textAlign = 'center'; ctx.fillText("＋❤️", 0, -drawH - -20 - (40 - heartTimer)); ctx.restore();
             }
-            ctx.drawImage(bodyImg, -drawW/2, -drawH + 5, drawW, drawH);
-            ctx.filter = 'none'; ctx.shadowBlur = 0;
-
+            if (powerUpTimer > 0) { ctx.filter = `hue-rotate(${frame * 15}deg) brightness(1.2)`; ctx.shadowBlur = 15; ctx.shadowColor = "rgba(255, 215, 0, 0.8)"; }
+            ctx.drawImage(bodyImg, -drawW/2, -drawH + 5, drawW, drawH); ctx.filter = 'none';
             if (faceImg && faceImg.complete && faceSuffix !== 'n') {
                 const faceW = drawW * (charData.faceScale || 0.6), faceH = faceImg.height * (faceW / faceImg.width);
                 ctx.drawImage(faceImg, (drawW * (charData.faceX || 0)) - faceW / 2, (-drawH * (charData.faceY || 0.75)) - faceH / 2, faceW, faceH);
             }
-            
-            // 提醒文字
+            ctx.fillStyle = '#222222'; let bindSwing = tipSwing * 0.5;
+            if (charData.boardType === 'double') {
+                ctx.beginPath(); ctx.roundRect(-16 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
+                ctx.beginPath(); ctx.roundRect(2 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
+            }
             if (powerUpTimer > 0) {
-                ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 2; ctx.fillStyle = '#f0c60c'; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center';
-                ctx.fillText("✨ 無敵衝刺 ✨", 0, -drawH - 30 + Math.sin(frame * 0.2) * 5);
-                ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; ctx.fillText("😎", 0, -drawH + 10); ctx.restore();
+                ctx.save(); let glow = Math.sin(frame * 0.1) * 10 + 15; ctx.shadowColor = "rgba(99, 62, 12, 0.8)"; ctx.shadowBlur = glow; ctx.fillStyle = "#ffea4d"; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center'; ctx.fillText("🌟 無敵之身 🌟", 0, -drawH - 10 + Math.sin(frame * 0.05) * 5); ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; ctx.fillText("😎", 0, -drawH + 10); ctx.restore();
             } else if (stormMode) {
-                ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.fillStyle = (frame % 20 < 10) ? '#ff4d4d' : '#ffcccc'; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center';
-                ctx.fillText("⚠️ 暴風雪來襲 ⚠️", (Math.random()-0.5)*3, -drawH - 30);
-                ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; ctx.fillText("🥶", 0, -drawH + 10); ctx.restore();
+                ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.fillStyle = (frame % 20 < 10) ? '#ff4d4d' : '#ffcccc'; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center'; ctx.fillText("⚠️ 暴風雪來襲 ⚠️", (Math.random()-0.5)*3, -drawH - 30); ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; ctx.fillText("🥶", 0, -drawH + 10); ctx.restore();
             }
         }
-        ctx.restore();
+        ctx.restore(); ctx.restore();
 
-        // C. 固定器 (現在也會跟著人物一起閃爍)
-        ctx.fillStyle = '#222222'; let bindSwing = tipSwing * 0.5;
-        if (charData.boardType === 'double') {
-            ctx.beginPath(); ctx.roundRect(-16 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
-            ctx.beginPath(); ctx.roundRect(2 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
-        }
-        ctx.restore(); // 結束整個玩家物件的 save
+        if (stormMode) { for(let i = 0; i < 20; i++) addStormParticle(); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.restore(); }
 
-        // 5. 暴風雪刮雪粒子 (不受人物閃爍影響，所以放在 restore 之後)
-        if (stormMode) {
-            for(let i = 0; i < 20; i++) addStormParticle();
-            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.restore();
-        }
-
-        // 6. Combo 與 UI
         if (comboCount >= 3) {
-            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); if (comboScale > 1) comboScale -= 0.05; ctx.translate(canvas.width / 2, 120); ctx.scale(comboScale, comboScale);
-            ctx.shadowColor = '#ffeb3b'; ctx.shadowBlur = 15; ctx.font = 'bold 40px "Space Mono", monospace'; ctx.textAlign = 'center';
-            let grad = ctx.createLinearGradient(0, -20, 0, 20); grad.addColorStop(0, '#fff176'); grad.addColorStop(1, '#f57f17'); ctx.fillStyle = grad;
-            ctx.fillText(`${comboCount} COMBO`, 0, 0); ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.strokeText(`${comboCount} COMBO`, 0, 0); ctx.restore();
+            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); if (comboScale > 1) comboScale -= 0.05; ctx.translate(canvas.width - 25, 100); ctx.scale(comboScale, comboScale); ctx.shadowColor = '#ffeb3b'; ctx.shadowBlur = 10; ctx.font = 'bold 24px "Space Mono", monospace'; ctx.textAlign = 'right'; let grad = ctx.createLinearGradient(0, -10, 0, 10); grad.addColorStop(0, '#fff176'); grad.addColorStop(1, '#f57f17'); ctx.fillStyle = grad; ctx.fillText(`${comboCount} COMBO`, 0, 0); ctx.strokeStyle = 'white'; ctx.lineWidth = 1; ctx.strokeText(`${comboCount} COMBO`, 0, 0); ctx.restore();
         }
 
-        // 愛心
         ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = "24px serif"; ctx.textAlign = "left";
         let heartStr = ""; for(let i=0; i<MAX_LIVES; i++) heartStr += (i < lives) ? "❤️" : "🖤";
         ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 4; ctx.fillText(heartStr, 20, 45); ctx.restore();
 
         requestAnimationFrame(loop);
     }
+
     function addParticle(x, y, vx, vy) { if (particles.length < 150) particles.push({ x, y, vx, vy, life: 30, alpha: 1, isStorm: false }); }
     function addStormParticle() { if (particles.length < 350) particles.push({ x: Math.random() * (canvas.width + 600) - 200, y: Math.random() * -200, vx: -15 - Math.random() * 20, vy: 20 + Math.random() * 15, life: 30, alpha: 0.3 + Math.random() * 0.5, isStorm: true, size: 1 + Math.random() * 3 }); }
     function updateParticlesLogic() { for (let i = particles.length - 1; i >= 0; i--) { let p = particles[i]; p.x += p.vx; p.y += p.vy; if (!p.isStorm) p.y -= speed * 0.5; p.life--; p.alpha = p.life / 30; if (p.life <= 0) particles.splice(i, 1); } }
     function drawParticlesRelative() { particles.forEach(p => { ctx.save(); ctx.globalAlpha = p.alpha; ctx.strokeStyle = 'white'; ctx.fillStyle = 'white'; if (p.isStorm) { ctx.lineWidth = p.size; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8); ctx.stroke(); } else { ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); }); }
 
+function triggerGameOver() {
+    running = false;
+    let medal = "❄️", title = "再接再厲", colorClass = "text-gray-400";
+
+    // 必須從最高分開始判定！
+    if (score >= 1500) {
+        medal = "👑"; title = "冰城至尊"; colorClass = "text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white font-black italic"; 
+    } else if (score >= 1000) {
+        medal = "💎"; title = "索菲亞之星"; colorClass = "text-cyan-300 drop-shadow-[0_0_10px_rgba(103,232,249,0.8)]"; 
+    } else if (score >= 700) {
+        medal = "🥇"; title = "哈爾濱滑雪傳說"; colorClass = "text-yellow-400";
+    } else if (score >= 500) {
+        medal = "🥈"; title = "專業滑雪手"; colorClass = "text-gray-200";
+    } else if (score >= 200) {
+        medal = "🥉"; title = "亞布力新手"; colorClass = "text-orange-400";
+    }
+
+    document.getElementById('uiOver').classList.remove('hidden');
+    document.getElementById('medalIcon').textContent = medal;
+    document.getElementById('medalTitle').textContent = title;
+    document.getElementById('medalTitle').className = `text-3xl font-bold mb-2 ${colorClass} drop-shadow-md`;
+    
+    // 分數紀錄邏輯
+    let highScore = localStorage.getItem('skiHighScore') || 0;
+    if (score > highScore) {
+        localStorage.setItem('skiHighScore', score);
+        document.getElementById('finalScore').innerHTML = `${score} <span class="text-yellow-300 text-sm ml-2">New Record!</span>`;
+    } else {
+        document.getElementById('finalScore').innerHTML = `${score} <br><span class="text-sm text-gray-400">歷史最高: ${highScore}</span>`;
+    }
+}
     window.onresize = resize; resize(); initCharSelect();
 </script>
 </body>
