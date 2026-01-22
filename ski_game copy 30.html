@@ -72,15 +72,15 @@ canvas {
 <canvas id="gameCanvas"></canvas>
 
 <script>
-let items = [], particles = [], obstacles = [];
+    let items = [], particles = [], obstacles = [];
     let powerUpTimer = 0, stormMode = false, stormTimer = 0, friction = 0.12; 
     let selectedIdx = 4, running = false, score = 0, frame = 0, speed = 7, px, py = 150, tx, fogAlpha = 0;
-    let comboCount = 0;
-    let comboScale = 1; 
-    let lives = 5;       
-    const MAX_LIVES = 5; 
-    let invincibilityTimer = 0; 
 
+
+
+
+
+    
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -118,12 +118,10 @@ let items = [], particles = [], obstacles = [];
     preloadAssets();
 
     function updateScore(points) {
-        const multiplier = 1 + Math.floor(comboCount / 10);
-        score += (points * multiplier);
-        if (points === 1) { comboCount++; comboScale = 1.3; }
+        score += points;
+        const scoreEl = document.querySelector('.score-panel');
         const liveScoreEl = document.getElementById('liveScore');
         if (liveScoreEl) liveScoreEl.textContent = score;
-        const scoreEl = document.querySelector('.score-panel');
         if (scoreEl) {
             scoreEl.classList.remove('score-bounce');
             void scoreEl.offsetWidth;
@@ -154,35 +152,51 @@ let items = [], particles = [], obstacles = [];
         px = tx = canvas.width / 2;
     }
 
+// 💡 修正 start 函數，加入 resize 確保初始化
     function start() {
         resize(); 
         document.getElementById('uiStart').classList.add('hidden');
-        document.getElementById('uiOver').classList.add('hidden');
-        running = true; score = 0; lives = 5; comboCount = 0; speed = 7; 
-        obstacles = []; items = []; particles = []; invincibilityTimer = 0;
-        px = tx = canvas.width / 2;
+        running = true; score = 0; speed = 7; obstacles = []; items = []; particles = [];
+        px = tx = canvas.width / 2; // 強制置中
         loop();
     }
 
+// 💡 強化後的移動邏輯：同時支援滑鼠與手機觸控
     const move = (e) => {
         if(!running) return;
-        let clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
-        if (e.touches && e.cancelable) e.preventDefault();
+
+        // 判定 clientX 來源（觸控或滑鼠）
+        let clientX;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            // 💡 如果在遊戲中，防止手機拉動頁面
+            if (e.cancelable) e.preventDefault();
+        } else {
+            clientX = e.clientX;
+        }
+
         const r = canvas.getBoundingClientRect();
+        // 計算縮放後的正確座標
         tx = Math.max(40, Math.min(canvas.width-40, (clientX - r.left) * (canvas.width / r.width)));
     };
 
+    // 💡 註冊所有監聽器
     window.addEventListener('mousemove', move);
-    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchmove', move, { passive: false }); // 必須設為 false 才能 preventDefault
     window.addEventListener('touchstart', move, { passive: false });
 
 function loop() {
         if(!running) return;
         frame++; 
         
-        if (powerUpTimer > 0) { powerUpTimer--; speed += 0.05; friction = 0.2; }
-        else if (stormMode) { speed += 0.03; friction = 0.06; }
-        else { friction = 0.12; }
+        // 1. 物理與狀態判定
+        if (powerUpTimer > 0) { 
+            powerUpTimer--; speed += 0.05; friction = 0.2; 
+        } else if (stormMode) { 
+            speed += 0.03; friction = 0.06; 
+        } else { 
+            friction = 0.12; 
+        }
         
         px += (tx - px) * friction; 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -191,7 +205,7 @@ function loop() {
         if (stormTimer % 1200 === 0) stormMode = true; 
         if (stormMode && stormTimer % 1200 === 300) stormMode = false; 
 
-        // 1. 速度線
+        // 2. 繪製速度線
         ctx.save();
         ctx.strokeStyle = '#c5e2f7'; ctx.lineWidth = 2;
         for(let i=0; i<6; i++) {
@@ -200,53 +214,51 @@ function loop() {
         }
         ctx.restore();
 
-        // 2. 道具 (吃到切換 e 表情)
+        // 3. 道具 (糖葫蘆)
         if(frame % 200 === 0) items.push({ x: Math.random() * (canvas.width - 80) + 40, y: canvas.height + 100, type: '🍡' });
         for (let i = items.length - 1; i >= 0; i--) {
-            let item = items[i]; item.y -= speed;
+            let item = items[i];
+            item.y -= speed;
             ctx.font = '40px serif'; ctx.textAlign = 'center';
             ctx.fillText(item.type, item.x, item.y);
             if(Math.hypot(px - item.x, py - item.y) < 40) { 
                 items.splice(i, 1); powerUpTimer = 90; updateScore(10); 
-            } else if(item.y < -100) { items.splice(i, 1); }
+            } else if(item.y < -100) {
+                items.splice(i, 1);
+            }
         }
 
-        // 3. 障礙物 (撞到切換 d 表情)
+        // 4. 障礙物
         if(frame % Math.max(15, 40 - Math.floor(speed * 0.7)) === 0) {
             const file = OBSTACLE_FILES[Math.floor(Math.random() * OBSTACLE_FILES.length)];
             obstacles.push({ x: Math.random() * (canvas.width - 80) + 40, y: canvas.height + 100, file: file });
         }
         for (let i = obstacles.length - 1; i >= 0; i--) {
-            let o = obstacles[i]; o.y -= speed;
+            let o = obstacles[i];
+            o.y -= speed;
             const config = OBSTACLE_CONFIG[o.file] || { w: 60, h: 60, r: 35 };
             const img = obsImages[o.file];
             ctx.save();
             if (powerUpTimer > 0 && Math.hypot(px - o.x, py - o.y) < config.r + 20) ctx.globalAlpha = 0.3;
             if (img && img.complete) ctx.drawImage(img, o.x - config.w / 2, o.y - config.h / 2, config.w, config.h);
             ctx.restore();
-
-            if (powerUpTimer <= 0 && invincibilityTimer <= 0 && Math.hypot(px - o.x, py - o.y) < config.r) {
-                lives--; comboCount = 0; obstacles.splice(i, 1); invincibilityTimer = 60;
-                if (lives <= 0) {
-                    running = false; document.getElementById('uiOver').classList.remove('hidden');
-                    document.getElementById('finalScore').textContent = score;
-                }
+            if (powerUpTimer <= 0 && Math.hypot(px - o.x, py - o.y) < config.r) {
+                running = false; document.getElementById('uiOver').classList.remove('hidden');
+                document.getElementById('finalScore').textContent = score;
             } else if(o.y < -150) { 
                 obstacles.splice(i, 1); updateScore(1); if(score % 5 === 0) speed += 0.2; 
             }
         }
 
-        // 4. 玩家人物總成
+        // 5. 玩家與粒子系統
         updateParticlesLogic();
-        ctx.save(); 
         
-        // --- 💡 全人物閃爍判定 (包含雪板、固定器、身體) ---
-        if (invincibilityTimer > 0) {
-            invincibilityTimer--;
-            if (frame % 6 < 3) ctx.globalAlpha = 0.2; // 調整閃爍頻率更俐落
+        // --- 暴風雪畫面震動 (套用到整個人物系統) ---
+        ctx.save(); 
+        if (stormMode) {
+            ctx.translate((Math.random()-0.5)*5, (Math.random()-0.5)*5);
         }
-
-        if (stormMode) ctx.translate((Math.random()-0.5)*5, (Math.random()-0.5)*5);
+        
         ctx.translate(px, py);
         let tilt = Math.max(-0.2, Math.min(0.2, (tx - px) * 0.05));
         let tipSwing = tilt * 30;
@@ -259,82 +271,70 @@ function loop() {
             const gap = 10;
             ctx.beginPath(); ctx.moveTo(-gap, -25); ctx.lineTo(-gap + tipSwing, 25); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(gap, -25); ctx.lineTo(gap + tipSwing, 25); ctx.stroke();
+            if (Math.abs(tilt) > 0.05) { addParticle(-gap + tipSwing, 12, -2, 2); addParticle(gap + tipSwing, 12, 2, 2); }
         } else {
             ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(tipSwing, 24); ctx.stroke();
+            if (Math.abs(tilt) > 0.05) addParticle(tipSwing, 25, -tilt * 10, 2);
         }
         ctx.restore();
 
-        // B. 表情判定邏輯 (依照您的新規則)
-        // 優先權：1. 遊戲結束/撞到(d) > 2. 吃到糖葫蘆(e) > 3. 暴風雪(s) > 4. 隨機笑容(h) > 5. 正常(n)
-        let faceSuffix = "n";
-        if (!running || invincibilityTimer > 0) faceSuffix = "d";
-        else if (powerUpTimer > 0) faceSuffix = "e";
-        else if (stormMode) faceSuffix = "s";
-        else if (score > 0 && score % 15 <= 3) faceSuffix = "h"; // 調低笑容頻率
-
+        // B. 身體與臉部
+        ctx.save();
+        let breath = Math.sin(frame * 0.15) * 2; 
+        ctx.translate(0, breath); 
+        ctx.rotate(tilt * 0.5); 
         const charData = CHARS[selectedIdx], charID = charData.file;
+        let faceSuffix = (!running) ? "d" : (powerUpTimer > 0) ? "e" : (stormMode) ? "s" : (score > 0 && score % 10 <= 2) ? "h" : "n";
         const bodyImg = charImages[charID], faceImg = charImages[`${charID}_${faceSuffix}`];
         const drawW = charData.size || 70, drawH = (260 / 152) * drawW;
 
-        ctx.save();
-        let breath = Math.sin(frame * 0.15) * 2; 
-        ctx.translate(0, breath); ctx.rotate(tilt * 0.5); 
-
         if (bodyImg && bodyImg.complete) {
-            if (powerUpTimer > 0) { 
-                ctx.filter = (frame % 4 < 2) ? 'brightness(1.5) sepia(0.5)' : 'none'; 
-                ctx.shadowBlur = 15; ctx.shadowColor = "rgba(255, 215, 0, 0.8)"; 
-            }
+            if (powerUpTimer > 0) { ctx.filter = (frame % 4 < 2) ? 'brightness(1.5) sepia(0.5)' : 'none'; ctx.shadowBlur = 15; ctx.shadowColor = "rgba(255, 215, 0, 0.8)"; }
             ctx.drawImage(bodyImg, -drawW/2, -drawH + 5, drawW, drawH);
             ctx.filter = 'none'; ctx.shadowBlur = 0;
-
             if (faceImg && faceImg.complete && faceSuffix !== 'n') {
                 const faceW = drawW * (charData.faceScale || 0.6), faceH = faceImg.height * (faceW / faceImg.width);
                 ctx.drawImage(faceImg, (drawW * (charData.faceX || 0)) - faceW / 2, (-drawH * (charData.faceY || 0.75)) - faceH / 2, faceW, faceH);
             }
-            
             // 提醒文字
             if (powerUpTimer > 0) {
-                ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 2; ctx.fillStyle = '#f0c60c'; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center';
+                ctx.save();
+                ctx.shadowColor = "rgba(0, 0, 0, 0.8)"; ctx.shadowBlur = 2; ctx.fillStyle = '#f0c60c'; 
+                ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center';
                 ctx.fillText("✨ 無敵衝刺 ✨", 0, -drawH - 30 + Math.sin(frame * 0.2) * 5);
                 ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; ctx.fillText("😎", 0, -drawH + 10); ctx.restore();
             } else if (stormMode) {
-                ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.fillStyle = (frame % 20 < 10) ? '#ff4d4d' : '#ffcccc'; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center';
+                ctx.save();
+                ctx.shadowColor = "rgba(0, 0, 0, 0.8)"; ctx.shadowBlur = 4;
+                ctx.fillStyle = (frame % 20 < 10) ? '#ff4d4d' : '#ffcccc'; 
+                ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center';
                 ctx.fillText("⚠️ 暴風雪來襲 ⚠️", (Math.random()-0.5)*3, -drawH - 30);
                 ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; ctx.fillText("🥶", 0, -drawH + 10); ctx.restore();
             }
         }
         ctx.restore();
 
-        // C. 固定器 (現在也會跟著人物一起閃爍)
+        // C. 固定器
         ctx.fillStyle = '#222222'; let bindSwing = tipSwing * 0.5;
         if (charData.boardType === 'double') {
             ctx.beginPath(); ctx.roundRect(-16 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
             ctx.beginPath(); ctx.roundRect(2 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
         }
-        ctx.restore(); // 結束整個玩家物件的 save
+        ctx.restore(); // 結束玩家整體的 translate & 震動
 
-        // 5. 暴風雪刮雪粒子 (不受人物閃爍影響，所以放在 restore 之後)
+        // 6. 暴風雪颳雪粒子
         if (stormMode) {
             for(let i = 0; i < 20; i++) addStormParticle();
-            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.restore();
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
         }
-
-        // 6. Combo 與 UI
-        if (comboCount >= 3) {
-            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); if (comboScale > 1) comboScale -= 0.05; ctx.translate(canvas.width / 2, 120); ctx.scale(comboScale, comboScale);
-            ctx.shadowColor = '#ffeb3b'; ctx.shadowBlur = 15; ctx.font = 'bold 40px "Space Mono", monospace'; ctx.textAlign = 'center';
-            let grad = ctx.createLinearGradient(0, -20, 0, 20); grad.addColorStop(0, '#fff176'); grad.addColorStop(1, '#f57f17'); ctx.fillStyle = grad;
-            ctx.fillText(`${comboCount} COMBO`, 0, 0); ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.strokeText(`${comboCount} COMBO`, 0, 0); ctx.restore();
-        }
-
-        // 愛心
-        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = "24px serif"; ctx.textAlign = "left";
-        let heartStr = ""; for(let i=0; i<MAX_LIVES; i++) heartStr += (i < lives) ? "❤️" : "🖤";
-        ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 4; ctx.fillText(heartStr, 20, 45); ctx.restore();
 
         requestAnimationFrame(loop);
     }
+
     function addParticle(x, y, vx, vy) { if (particles.length < 150) particles.push({ x, y, vx, vy, life: 30, alpha: 1, isStorm: false }); }
     function addStormParticle() { if (particles.length < 350) particles.push({ x: Math.random() * (canvas.width + 600) - 200, y: Math.random() * -200, vx: -15 - Math.random() * 20, vy: 20 + Math.random() * 15, life: 30, alpha: 0.3 + Math.random() * 0.5, isStorm: true, size: 1 + Math.random() * 3 }); }
     function updateParticlesLogic() { for (let i = particles.length - 1; i >= 0; i--) { let p = particles[i]; p.x += p.vx; p.y += p.vy; if (!p.isStorm) p.y -= speed * 0.5; p.life--; p.alpha = p.life / 30; if (p.life <= 0) particles.splice(i, 1); } }
