@@ -761,7 +761,92 @@
   .comment.reply{ margin-left: 34px; }
 }
 
+/* --- 頁面底部導航 CSS --- */
+.page-footer-nav {
+  margin-top: 40px;
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
+/* --- 底部導航區域 --- */
+.page-footer-nav {
+  margin-top: 60px;
+  padding: 30px 0 60px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* 左右切換按鈕列 */
+.footer-step-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.step-link {
+  flex: 1; /* 讓兩邊按鈕等寬 */
+  text-decoration: none;
+  padding: 16px 20px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+  border: 1px solid var(--line);
+}
+
+/* 前一天：深色玻璃質感 */
+.step-link.prev {
+  background: rgba(255, 255, 255, 0.05);
+  align-items: flex-start;
+}
+
+/* 後一天：藍色漸層亮點 */
+.step-link.next {
+  background: linear-gradient(135deg, var(--accent-blue) 0%, #0051d7 100%);
+  align-items: flex-end;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0, 113, 227, 0.3);
+}
+
+.step-link:active { transform: scale(0.97); }
+
+.step-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  opacity: 0.6;
+  margin-bottom: 4px;
+}
+
+.step-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* 全寬返回頁首按鈕 */
+.footer-top-row {
+  text-align: center;
+}
+
+.full-back-to-top {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.full-back-to-top:hover {
+  opacity: 1;
+}
 
 
   </style>
@@ -2131,6 +2216,29 @@
  
 
     </section>
+
+<div class="page-footer-nav">
+    <div class="footer-step-row">
+      <a href="day00.html" class="step-link prev">
+       
+        <span class="step-name">‹ 前一天</span>
+      </a>
+
+      <a href="day02.html" class="step-link next">
+        
+        <span class="step-name">第一天 ›</span>
+      </a>
+    </div>
+
+    <div class="footer-top-row">
+      <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="full-back-to-top">
+        ↑ 返回本頁首
+      </button>
+    </div>
+  </div>
+</main>
+
+
 
 
 

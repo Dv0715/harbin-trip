@@ -33,82 +33,101 @@
         .card-img { width: 100%; height: 100%; object-fit: cover; opacity: 1; display: block; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.75); color: white; font-size: 11px; padding: 4px 0; backdrop-filter: blur(3px); font-weight: 600; }
         #liveScore { font-family: 'Space Mono', monospace; font-size: 1.5rem; font-weight: bold; color: #6edaff; text-shadow: 0 0 8px rgba(110, 218, 255, 0.5); }
-        .score-panel { position: fixed; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); border: 1px solid rgba(50, 184, 236, 0.2); padding: 6px 16px; border-radius: 99px; z-index: 1000; display: flex; align-items: center; gap: 8px; }
+        .score-panel { position: fixed; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); border: 1px solid rgba(50, 184, 236, 0.2); padding: 6px 16px; border-radius: 99px; z-index: 1000; display: flex; align-items: center; gap: 8px; transition: transform 0.2s; }
         .score-panel::before { content: "分數"; font-size: 10px; font-weight: 900; color: rgba(255, 255, 255, 0.6); letter-spacing: 1px; }
         h1.title-bounce { font-weight: 900; font-style: italic; color: #93c5fd; text-shadow: 2px 2px 0px #1e3a8a, 4px 4px 15px rgba(0,0,0,0.5); }
+        
+        @keyframes score-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); color: #ffeb3b; }
+            100% { transform: scale(1); }
+        }
+        .score-bounce { animation: score-pop 0.3s ease-out; }
+
+
+canvas {
+    touch-action: none; /* 💡 禁止瀏覽器處理所有手勢，全權交給 JavaScript */
+    user-select: none;  /* 防止長按選取文字 */
+    -webkit-tap-highlight-color: rgba(0,0,0,0); /* 移除 iOS 點擊灰色方塊 */
+}
+
+
     </style>
 </head>
 <body>
 
 <div class="snow-bg"></div>
-
 <div id="uiStart" class="ui-panel pointer-events-auto">
     <h1 class="text-5xl font-black italic mb-3 text-blue-300 title-bounce">滑雪挑戰GO！🧊</h1>
     <p class="text-gray-300 mb-10 text-sm tracking-widest uppercase">❄️ Yabuli Special Edition ❄️</p>
     <div id="charSelect"></div>
     <button onclick="start()" class="btn-action text-xl px-12 py-4">開始滑雪</button>
 </div>
-
 <div id="uiOver" class="ui-panel hidden pointer-events-auto">
     <h2 class="text-6xl font-black text-red-400 mb-4 italic">摔倒了！</h2>
     <p class="text-2xl mb-10">最終得分: <span id="finalScore" class="text-yellow-300">0</span></p>
     <button onclick="location.reload()" class="btn-action bg-red-600">重新挑戰</button>
 </div>
-
-<div class="score-panel">
-    <span id="liveScore">0</span>
-</div>
-
+<div class="score-panel"><span id="liveScore">0</span></div>
 <canvas id="gameCanvas"></canvas>
 
 <script>
-let items = [], particles = [], obstacles = [];
+    let items = [], particles = [], obstacles = [];
     let powerUpTimer = 0, stormMode = false, stormTimer = 0, friction = 0.12; 
-    let selectedIdx = 4, running = false, score = 0, frame = 0, speed = 7;
-    let px, py = 150, tx;
-    let fogAlpha = 0;
+    let selectedIdx = 4, running = false, score = 0, frame = 0, speed = 7, px, py = 150, tx, fogAlpha = 0;
 
+
+
+
+
+    
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
     const CHARS = [
-        { name: "爸", file: "1", boardType: "double", size: 55, faceY: 0.562, faceScale: 0.45, faceX: -0.01 },
-        { name: "媽", file: "2", boardType: "double", size: 55, faceY: 0.549, faceScale: 0.443, faceX: 0.005 },
-        { name: "哥", file: "3", boardType: "single", size: 55, faceY: 0.57, faceScale: 0.45, faceX: -0.01 },
-        { name: "言", file: "4", boardType: "double", size: 55, faceY: 0.62, faceScale: 0.45, faceX: 0.007 },
-        { name: "妹", file: "5", boardType: "double", size: 55, faceY: 0.525, faceScale: 0.45, faceX: 0.005 },
-        { name: "弟", file: "6", boardType: "single", size: 55, faceY: 0.558, faceScale: 0.45, faceX: -0.04 },
-        { name: "Vivi", file: "7", boardType: "single", size: 55, faceY: 0.602, faceScale: 0.45, faceX: -0.001 }
+        { name: "爸", file: "1", boardType: "double", size: 55, faceY: 0.562, faceScale: 0.5, faceX: -0.01 },
+        { name: "媽", file: "2", boardType: "double", size: 55, faceY: 0.549, faceScale: 0.5, faceX: 0.005 },
+        { name: "哥", file: "3", boardType: "single", size: 55, faceY: 0.575, faceScale: 0.49, faceX: -0.01 },
+        { name: "言", file: "4", boardType: "double", size: 55, faceY: 0.62, faceScale: 0.5, faceX: 0.007 },
+        { name: "妹", file: "5", boardType: "double", size: 55, faceY: 0.525, faceScale: 0.5, faceX: 0.005 },
+        { name: "弟", file: "6", boardType: "single", size: 55, faceY: 0.569, faceScale: 0.496, faceX: -0.04 },
+        { name: "Vivi", file: "7", boardType: "single", size: 55, faceY: 0.6065, faceScale: 0.5, faceX: -0.005 }
     ];
 
     const FACES = ['n', 's', 'h', 'e', 'd']; 
     const OBSTACLE_FILES = ['1.webp', '2.webp', '3.webp'];
     const charImages = {}, obsImages = {};
     const OBSTACLE_CONFIG = {
-        '1.webp': { w: 70, h: 60, r: 35 }, 
-        '2.webp': { w: 50, h: 50, r: 35 }, 
-        '3.webp': { w: 70, h: 90, r: 35 }  
+        '1.webp': { w: 70, h: 60, r: 35 }, '2.webp': { w: 50, h: 50, r: 35 }, '3.webp': { w: 70, h: 90, r: 35 }
     };
 
     function preloadAssets() {
         CHARS.forEach(c => {
-            const mainImg = new Image();
-            mainImg.src = `images/ski/${c.file}.webp`;
+            const mainImg = new Image(); mainImg.src = `images/ski/${c.file}.webp`;
             charImages[c.file] = mainImg;
-
             FACES.forEach(f => {
-                const img = new Image();
-                img.src = `images/ski/${c.file}_${f}.webp`;
+                const img = new Image(); img.src = `images/ski/${c.file}_${f}.webp`;
                 charImages[`${c.file}_${f}`] = img;
             });
         });
         OBSTACLE_FILES.forEach(file => {
-            const img = new Image(); 
-            img.src = `images/obs/${file}`;
+            const img = new Image(); img.src = `images/obs/${file}`;
             obsImages[file] = img;
         });
     }
     preloadAssets();
+
+    function updateScore(points) {
+        score += points;
+        const scoreEl = document.querySelector('.score-panel');
+        const liveScoreEl = document.getElementById('liveScore');
+        if (liveScoreEl) liveScoreEl.textContent = score;
+        if (scoreEl) {
+            scoreEl.classList.remove('score-bounce');
+            void scoreEl.offsetWidth;
+            scoreEl.classList.add('score-bounce');
+        }
+    }
 
     function initCharSelect() {
         const menu = document.getElementById('charSelect');
@@ -129,8 +148,7 @@ let items = [], particles = [], obstacles = [];
     };
 
     function resize() {
-        canvas.width = Math.min(window.innerWidth, 500);
-        canvas.height = window.innerHeight;
+        canvas.width = Math.min(window.innerWidth, 500); canvas.height = window.innerHeight;
         px = tx = canvas.width / 2;
     }
 
@@ -152,18 +170,13 @@ let items = [], particles = [], obstacles = [];
         if(!running) return;
         frame++; 
         
-        // 1. 物理手感
-        if (powerUpTimer > 0) {
-            powerUpTimer--; speed += 0.05; friction = 0.2;
-        } else if (stormMode) {
-            speed += 0.03; friction = 0.06;
-        } else {
-            friction = 0.12;
-        }
+        if (powerUpTimer > 0) { powerUpTimer--; speed += 0.05; friction = 0.2; }
+        else if (stormMode) { speed += 0.03; friction = 0.06; }
+        else { friction = 0.12; }
+        
         px += (tx - px) * friction; 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 2. 暴風雪邏輯
         stormTimer++;
         if (stormTimer % 1200 === 0) stormMode = true; 
         if (stormMode && stormTimer % 1200 === 300) stormMode = false; 
@@ -175,24 +188,29 @@ let items = [], particles = [], obstacles = [];
             ctx.beginPath(); ctx.moveTo(i * canvas.width / 5, ly - 50); ctx.lineTo(i * canvas.width / 5, ly + 50); ctx.stroke();
         }
 
-        // 3. 道具 (糖葫蘆)
+        // 💡 修正道具生成與繪製邏輯
         if(frame % 200 === 0) items.push({ x: Math.random() * (canvas.width - 80) + 40, y: canvas.height + 100, type: '🍡' });
-        items.forEach((item, i) => {
+        for (let i = items.length - 1; i >= 0; i--) {
+            let item = items[i];
             item.y -= speed;
             ctx.font = '40px serif'; ctx.textAlign = 'center';
             ctx.fillText(item.type, item.x, item.y);
-            if(Math.hypot(px - item.x, py - item.y) < 40) { items.splice(i, 1); powerUpTimer = 90; score += 10; }
-            if(item.y < -100) items.splice(i, 1);
-        });
+            if(Math.hypot(px - item.x, py - item.y) < 40) { 
+                items.splice(i, 1); powerUpTimer = 90; updateScore(10); 
+            } else if(item.y < -100) {
+                items.splice(i, 1);
+            }
+        }
 
-        // 4. 障礙物與碰撞
+        // 障礙物
         if(frame % Math.max(15, 40 - Math.floor(speed * 0.7)) === 0) {
             const file = OBSTACLE_FILES[Math.floor(Math.random() * OBSTACLE_FILES.length)];
             obstacles.push({ x: Math.random() * (canvas.width - 80) + 40, y: canvas.height + 100, file: file });
         }
-        obstacles.forEach((o, i) => {
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let o = obstacles[i];
             o.y -= speed;
-            const config = OBSTACLE_CONFIG[o.file] || { w: 60, h: 60, r: 30 };
+            const config = OBSTACLE_CONFIG[o.file] || { w: 60, h: 60, r: 35 };
             const img = obsImages[o.file];
             ctx.save();
             if (powerUpTimer > 0 && Math.hypot(px - o.x, py - o.y) < config.r + 20) ctx.globalAlpha = 0.3;
@@ -201,11 +219,12 @@ let items = [], particles = [], obstacles = [];
             if (powerUpTimer <= 0 && Math.hypot(px - o.x, py - o.y) < config.r) {
                 running = false; document.getElementById('uiOver').classList.remove('hidden');
                 document.getElementById('finalScore').textContent = score;
+            } else if(o.y < -150) { 
+                obstacles.splice(i, 1); updateScore(1); if(score % 5 === 0) speed += 0.2; 
             }
-            if(o.y < -150) { obstacles.splice(i, 1); score++; document.getElementById('liveScore').textContent = score; if(score % 5 === 0) speed += 0.2; }
-        });
+        }
 
-        // 5. 繪製玩家 (含表情疊加)
+        // 玩家與效果
         updateParticlesLogic();
         ctx.save(); 
         ctx.translate(px, py);
@@ -213,7 +232,6 @@ let items = [], particles = [], obstacles = [];
         let tipSwing = tilt * 30;
         drawParticlesRelative();
         
-        // 雪板
         ctx.save(); ctx.strokeStyle = '#3D3333'; ctx.lineWidth = (CHARS[selectedIdx].boardType === 'double') ? 10 : 25; ctx.lineCap = 'round';
         if (CHARS[selectedIdx].boardType === 'double') {
             const gap = 10;
@@ -221,95 +239,93 @@ let items = [], particles = [], obstacles = [];
             ctx.beginPath(); ctx.moveTo(gap, -25); ctx.lineTo(gap + tipSwing, 25); ctx.stroke();
             if (Math.abs(tilt) > 0.05) { addParticle(-gap + tipSwing, 12, -2, 2); addParticle(gap + tipSwing, 12, 2, 2); }
         } else {
-            ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(tipSwing, 25); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(tipSwing, 24); ctx.stroke();
             if (Math.abs(tilt) > 0.05) addParticle(tipSwing, 25, -tilt * 10, 2);
         }
         ctx.restore();
 
-// B. 繪製身體與五官
-ctx.save();
-let breath = Math.sin(frame * 0.15) * 2; 
-ctx.rotate(tilt * 0.5); 
+        ctx.save();
+        let breath = Math.sin(frame * 0.15) * 2; 
+        ctx.translate(0, breath); ctx.rotate(tilt * 0.5); 
+        const charData = CHARS[selectedIdx], charID = charData.file;
+        let faceSuffix = (!running) ? "d" : (powerUpTimer > 0) ? "e" : (stormMode) ? "s" : (score > 0 && score % 10 <= 2) ? "h" : "n";
+        const bodyImg = charImages[charID], faceImg = charImages[`${charID}_${faceSuffix}`];
+        const drawW = charData.size || 70, drawH = (260 / 152) * drawW;
 
-const charData = CHARS[selectedIdx];
-const charID = charData.file;
-// 💡 確保這段邏輯在繪製前執行
-let faceSuffix = (!running) ? "d" : (powerUpTimer > 0) ? "e" : (stormMode) ? "s" : (score > 0 && score % 10 <= 2) ? "h" : "n";
+        if (bodyImg && bodyImg.complete) {
+            if (powerUpTimer > 0) { ctx.filter = (frame % 4 < 2) ? 'brightness(1.5) sepia(0.5)' : 'none'; ctx.shadowBlur = 15; ctx.shadowColor = "rgba(255, 215, 0, 0.8)"; }
+            ctx.drawImage(bodyImg, -drawW/2, -drawH + 5, drawW, drawH);
+            ctx.filter = 'none'; ctx.shadowBlur = 0;
+            if (faceImg && faceImg.complete && faceSuffix !== 'n') {
+                const faceW = drawW * (charData.faceScale || 0.6), faceH = faceImg.height * (faceW / faceImg.width);
+                ctx.drawImage(faceImg, (drawW * (charData.faceX || 0)) - faceW / 2, (-drawH * (charData.faceY || 0.75)) - faceH / 2, faceW, faceH);
+            }
+            if (powerUpTimer > 0) {
+// 無敵狀態：金黃色字體
+            ctx.save();
+            // 💡 設定陰影：增加立體感，防止文字淹沒在白色雪地
+            ctx.shadowColor = "rgba(0, 0, 0, 0.8)"; // 黑色半透明陰影
+            ctx.shadowBlur = 1;                    // 模糊程度
+            ctx.shadowOffsetX = 1;                 // 水平位移
+            ctx.shadowOffsetY = 1;                 // 垂直位移
+            
+            ctx.fillStyle = '#f0c60c'; 
+            ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`;
+            ctx.textAlign = 'center';
 
-const bodyImg = charImages[charID];
-const faceImg = charImages[`${charID}_${faceSuffix}`];
-const drawW = charData.size || 70;
-const drawH = (260 / 152) * drawW; // 這裡改回 260/152 以符合你的原圖比例
-
-if (bodyImg && bodyImg.complete) {
-    // 畫身體
-    ctx.drawImage(bodyImg, -drawW/2, -drawH + 5 + breath, drawW, drawH - breath);
-    
-    // 畫五官疊加 (faceX 修正版)
-    if (faceImg && faceImg.complete && faceSuffix !== 'n') {
-        const faceScale = charData.faceScale || 0.6;
-        const faceW = drawW * faceScale;
-        const faceH = faceImg.height * (faceW / faceImg.width);
-        
-        const faceYPos = -drawH * (charData.faceY || 0.75);
-        const faceXPos = drawW * (charData.faceX || 0); // 💡 水平位移
-
-        ctx.drawImage(
-            faceImg, 
-            faceXPos - faceW / 2, 
-            faceYPos - faceH / 2 + breath, 
-            faceW, 
-            faceH
-        );
-    }
-}
-ctx.restore(); // 結束呼吸與旋轉
-        
-        // 固定器
-        ctx.fillStyle = '#222222'; let bindSwing = tipSwing * 0.6;
-        if (charData.boardType === 'double') {
-            ctx.beginPath(); ctx.roundRect(-16 + bindSwing, -5, 14, 12, 4); ctx.fill();
-            ctx.beginPath(); ctx.roundRect(2 + bindSwing, -5, 14, 12, 4); ctx.fill();
-        } else {
-            ctx.beginPath(); ctx.roundRect(-7 + bindSwing, -4, 14, 9, 3); ctx.fill();
+            // 💡 調整高度：-drawH 是頭頂，後面的數字愈大愈往上
+            const textY = -drawH - 10; // 從 -35 改為 -45，讓字飛更高一點
+            const textBounce = Math.sin(frame * 0.2) * 5;
+            
+            ctx.fillText("✨ 無敵衝刺 ✨", 0, textY + textBounce);
+            
+            // 畫墨鏡：稍微調低一點點貼近臉部
+            ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`;
+            ctx.fillText("😎", 0, -drawH + 10); 
+            ctx.restore();
+            } else if (stormMode) {
+// 暴風雪狀態：紅色警告字體
+            ctx.save();
+            ctx.shadowColor = "rgba(0, 0, 0, 0.8)"; // 暴風雪時陰影加深
+            ctx.shadowBlur = 4;
+            
+            ctx.fillStyle = (frame % 20 < 10) ? '#ff4d4d' : '#ffcccc'; 
+            ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`;
+            ctx.textAlign = 'center';
+            
+            const alertY = -drawH - 10; // 警示文字高度
+            const textShake = (Math.random() - 0.5) * 3;
+            ctx.fillText("⚠️ 暴風雪來襲 ⚠️", textShake, alertY);
+            
+            ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`;
+            ctx.fillText("🥶", 0, -drawH + 10);
+            }
         }
         ctx.restore();
 
-        // 6. 暴風雪與霧氣特效 (最上層)
+        ctx.fillStyle = '#222222'; let bindSwing = tipSwing * 0.5;
+        if (charData.boardType === 'double') {
+            ctx.beginPath(); ctx.roundRect(-16 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(2 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
+        }
+        ctx.restore();
+
         if (stormMode) {
             if (fogAlpha < 0.75) fogAlpha += 0.015;
             for(let i=0; i<15; i++) addStormParticle();
             ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
             let grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.width*0.15, canvas.width/2, canvas.height/2, canvas.width*0.9);
             grad.addColorStop(0, "rgba(255, 255, 255, 0)"); grad.addColorStop(1, `rgba(255, 255, 255, ${fogAlpha})`);
-            ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.restore();
-        } else if (fogAlpha > 0) {
-            fogAlpha -= 0.02;
-        }
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.restore();
+        } else if (fogAlpha > 0) { fogAlpha -= 0.02; }
 
         requestAnimationFrame(loop);
     }
 
     function addParticle(x, y, vx, vy) { if (particles.length < 150) particles.push({ x, y, vx, vy, life: 30, alpha: 1, isStorm: false }); }
-    function addStormParticle() {
-        if (particles.length < 350) particles.push({ x: Math.random() * (canvas.width + 600) - 200, y: Math.random() * -200, vx: -15 - Math.random() * 20, vy: 20 + Math.random() * 15, life: 30, alpha: 0.3 + Math.random() * 0.5, isStorm: true, size: 1 + Math.random() * 3 });
-    }
-    function updateParticlesLogic() {
-        for (let i = particles.length - 1; i >= 0; i--) {
-            let p = particles[i]; p.x += p.vx; p.y += p.vy;
-            if (!p.isStorm) p.y -= speed * 0.5;
-            p.life--; p.alpha = p.life / 30; if (p.life <= 0) particles.splice(i, 1);
-        }
-    }
-    function drawParticlesRelative() {
-        particles.forEach(p => {
-            ctx.save(); ctx.globalAlpha = p.alpha; ctx.strokeStyle = 'white'; ctx.fillStyle = 'white';
-            if (p.isStorm) { ctx.lineWidth = p.size; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8); ctx.stroke(); }
-            else { ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill(); }
-            ctx.restore();
-        });
-    }
+    function addStormParticle() { if (particles.length < 350) particles.push({ x: Math.random() * (canvas.width + 600) - 200, y: Math.random() * -200, vx: -15 - Math.random() * 20, vy: 20 + Math.random() * 15, life: 30, alpha: 0.3 + Math.random() * 0.5, isStorm: true, size: 1 + Math.random() * 3 }); }
+    function updateParticlesLogic() { for (let i = particles.length - 1; i >= 0; i--) { let p = particles[i]; p.x += p.vx; p.y += p.vy; if (!p.isStorm) p.y -= speed * 0.5; p.life--; p.alpha = p.life / 30; if (p.life <= 0) particles.splice(i, 1); } }
+    function drawParticlesRelative() { particles.forEach(p => { ctx.save(); ctx.globalAlpha = p.alpha; ctx.strokeStyle = 'white'; ctx.fillStyle = 'white'; if (p.isStorm) { ctx.lineWidth = p.size; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8); ctx.stroke(); } else { ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); }); }
 
     window.onresize = resize; resize(); initCharSelect();
 </script>
