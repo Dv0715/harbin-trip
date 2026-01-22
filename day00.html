@@ -762,65 +762,56 @@
 }
 
 
-/* --- 底部導航區域 --- */
+/* --- 底部導航區域優化 --- */
 .page-footer-nav {
   margin-top: 60px;
-  padding: 30px 0 60px;
+  padding: 40px 10px 80px; /* 增加下方留白，讓滑到底的感覺更舒服 */
   border-top: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 32px;
 }
 
-/* 左右切換按鈕列 */
 .footer-step-row {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: center;
+  min-height: 44px; /* 固定高度防止抖動 */
 }
 
 .step-link {
-  flex: 1; /* 讓兩邊按鈕等寬 */
   text-decoration: none;
-  padding: 16px 20px;
-  border-radius: 18px;
-  display: flex;
-  flex-direction: column;
+  padding: 12px 60px; /* 更俐落的比例 */
+  border-radius: 12px;
   transition: all 0.2s ease;
+  font-size: 14px; /* 稍微縮小字體 */
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ⬅️ 前一天：如果只有它，它會自然靠左 */
+.step-link.prev {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
   border: 1px solid var(--line);
 }
 
-/* 前一天：深色玻璃質感 */
-.step-link.prev {
-  background: rgba(255, 255, 255, 0.05);
-  align-items: flex-start;
-}
-
-/* 後一天：藍色漸層亮點 */
+/* ➡️ 後一天：如果只有它，透過 margin-left: auto 把它推到最右邊 */
 .step-link.next {
   background: linear-gradient(135deg, var(--accent-blue) 0%, #0051d7 100%);
-  align-items: flex-end;
-  border: none;
-  box-shadow: 0 4px 15px rgba(0, 113, 227, 0.3);
-}
-
-.step-link:active { transform: scale(0.97); }
-
-.step-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  opacity: 0.6;
-  margin-bottom: 4px;
-}
-
-.step-name {
-  font-size: 16px;
-  font-weight: 800;
   color: #fff;
+  margin-left: auto; /* 💡 關鍵：自動推向右側 */
+  box-shadow: 0 2px 8px rgba(57, 147, 236, 0.6);
 }
 
-/* 全寬返回頁首按鈕 */
+/* 兩者同時存在時，取消 next 的自動靠右，讓它們撐開 */
+.footer-step-row:has(.prev):has(.next) .step-link {
+  flex: 0 1 auto; /* 不強制撐滿，保持俐落大小 */
+}
+
+.step-link:active { transform: scale(0.96); }
+
+/* --- 返回頁首按鈕 --- */
 .footer-top-row {
   text-align: center;
 }
@@ -829,16 +820,16 @@
   background: transparent;
   border: none;
   color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  font-weight: 500;
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0.5;
   transition: opacity 0.2s;
+  padding: 10px;
 }
 
-.full-back-to-top:hover {
-  opacity: 1;
-}
+.full-back-to-top:hover { opacity: 1; }
 
 
   </style>
@@ -1280,13 +1271,7 @@
 
 <div class="page-footer-nav">
     <div class="footer-step-row">
-      <a href="day05.html" class="step-link prev">
-       
-        <span class="step-name">‹ 前一天</span>
-      </a>
-
       <a href="day01.html" class="step-link next">
-        
         <span class="step-name">下一天 ›</span>
       </a>
     </div>
@@ -1296,9 +1281,7 @@
         ↑ 返回本頁首
       </button>
     </div>
-  </div>
-</main>
-
+</div>
  
 
 
