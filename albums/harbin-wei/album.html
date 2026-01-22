@@ -86,7 +86,7 @@
 
     <nav class="sticky top-0 z-50 bg-[#0a0c12]/80 backdrop-blur-md border-b border-white/5 p-4">
         <div class="max-w-7xl mx-auto flex justify-between items-center px-2">
-            <a href="../../index0.html" class="text-gray-400 text-sm flex items-center gap-1 hover:text-white transition">
+            <a href="../../photoAlbum.html" class="text-gray-400 text-sm flex items-center gap-1 hover:text-white transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 返回總覽
             </a>
@@ -94,6 +94,13 @@
             <div class="w-16"></div>
         </div>
     </nav>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 mt-4 flex gap-3">
+    <button id="filter-all" onclick="filterMedia('all')" class="px-4 py-1.5 rounded-full text-xs font-bold bg-white text-black transition">全部</button>
+    <button id="filter-image" onclick="filterMedia('image')" class="px-4 py-1.5 rounded-full text-xs font-bold bg-white/10 text-gray-400 hover:bg-white/20 transition">只看照片</button>
+    <button id="filter-video" onclick="filterMedia('video')" class="px-4 py-1.5 rounded-full text-xs font-bold bg-white/10 text-gray-400 hover:bg-white/20 transition">只看影片</button>
+</div>
+
 
     <main class="max-w-7xl mx-auto p-4 sm:p-6">
         <!-- 容器類別更名為 gallery-grid -->
@@ -123,127 +130,161 @@
         <p id="lbCap" class="mt-4 text-gray-400 text-sm font-medium tracking-widest"></p>
     </div>
 
-    <script>
-        let allMedia = [];
-        let currentIndex = 0;
+<script>
+let rawMedia = [];      // 存放原始數據
+let displayMedia = [];  // 存放當前顯示（篩選後）的數據
+let currentIndex = 0;
 
-        function setAlbumTitle() {
-            const segments = window.location.pathname.split('/');
-            const folderName = segments[segments.length - 2];
-            const nameMap = {
-                'harbin-hai': '哈爾濱・海&馨',               
-                'harbin-gang': '哈爾濱・綱', 
-                'harbin-yan': '哈爾濱・言',
-                'harbin-wei': '哈爾濱・薇', 
-                'harbin-jeff': '哈爾濱・衡',              
-                'harbin-vivi': '哈爾濱・vivi',
-                'harbin-xu': '哈爾濱・導遊小徐',
-                'xiamen-hai_jeff': '廈門・爸&衡'
-            };
-            document.getElementById('albumName').textContent = nameMap[folderName] || '哈爾濱相簿';
+// 設置相簿標題
+function setAlbumTitle() {
+    const segments = window.location.pathname.split('/');
+    const folderName = segments[segments.length - 2];
+    const nameMap = {
+        'harbin-hai': '哈爾濱・海&馨',               
+        'harbin-gang': '哈爾濱・綱', 
+        'harbin-yan': '哈爾濱・言',
+        'harbin-wei': '哈爾濱・薇', 
+        'harbin-jeff': '哈爾濱・衡',              
+        'harbin-vivi': '哈爾濱・vivi',
+        'harbin-xu': '哈爾濱・導遊小徐',
+        'xiamen-hai_jeff': '廈門・爸&衡'
+    };
+    document.getElementById('albumName').textContent = nameMap[folderName] || '哈爾濱相簿';
+}
+
+async function init() {
+    setAlbumTitle();
+    try {
+        const res = await fetch('media.json?t=' + Date.now());
+        const data = await res.json();
+        
+        const images = (data.images || []).map(i => ({...i, type: 'image', root: 'images/'}));
+        const videos = (data.videos || []).map(v => ({...v, type: 'video', root: 'videos/'}));
+        
+        // 自然數字排序
+        rawMedia = [...images, ...videos].sort((a, b) => 
+            a.url.localeCompare(b.url, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        // 預設顯示全部
+        filterMedia('all');
+
+    } catch (err) {
+        console.error("載入失敗:", err);
+    }
+}
+
+function filterMedia(type) {
+    const container = document.getElementById('galleryContainer');
+    const emptyState = document.getElementById('emptyState');
+
+    // 1. 更新數據源
+    if (type === 'all') {
+        displayMedia = [...rawMedia];
+    } else {
+        displayMedia = rawMedia.filter(m => m.type === type);
+    }
+
+    // 2. 更新按鈕樣式 (使用 classList.add/remove 較穩定)
+    const types = ['all', 'image', 'video'];
+    types.forEach(t => {
+        const btn = document.getElementById(`filter-${t}`);
+        if (t === type) {
+            btn.classList.add('bg-white', 'text-black');
+            btn.classList.remove('bg-white/10', 'text-gray-400');
+        } else {
+            btn.classList.remove('bg-white', 'text-black');
+            btn.classList.add('bg-white/10', 'text-gray-400');
         }
+    });
 
-        async function init() {
-            setAlbumTitle();
-            const container = document.getElementById('galleryContainer');
-            try {
-                const res = await fetch('media.json?t=' + Date.now());
-                const data = await res.json();
-                
-                // 1. 預先處理所有媒體物件，標記好類型與路徑
-                const images = (data.images || []).map(i => ({...i, type: 'image', root: 'images/'}));
-                const videos = (data.videos || []).map(v => ({...v, type: 'video', root: 'videos/'}));
-                
-                // 2. ✅ 將所有媒體合併後，統一起進行自然數字排序
-                // 這樣不論是 1.jpg 還是 2.mp4 都會按照數字大小排在一起
-                allMedia = [...images, ...videos].sort((a, b) => 
-                    a.url.localeCompare(b.url, undefined, { numeric: true, sensitivity: 'base' })
-                );
+    // 3. 檢查是否為空
+    if (displayMedia.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        emptyState.querySelector('p').textContent = `這裡目前沒有${type === 'video' ? '影片' : '照片'}...`;
+        return;
+    } else {
+        emptyState.classList.add('hidden');
+    }
 
-                if (allMedia.length === 0) {
-                    document.getElementById('emptyState').classList.remove('hidden');
-                    return;
-                }
-
-                // 3. 渲染
-                container.innerHTML = allMedia.map((m, i) => `
-                    <div class="gallery-item cursor-pointer" onclick="openLightbox(${i})">
-                        ${m.type === 'video' ? `
-                            <div class="play-overlay">
-                                <div class="play-btn">
-                                    <svg class="w-5 h-5 text-white fill-current ml-0.5" viewBox="0 0 20 20">
-                                        <path d="M6 4l10 6-10 6V4z"/>
-                                    </svg>
-                                </div>
-                            </div>
-                            <video class="media-thumb" preload="metadata" src="${m.root}${m.url}#t=0.5"></video>
-                        ` : `
-                            <img src="${m.root}${m.url}" class="media-thumb" loading="lazy">
-                        `}
+    // 4. 重新渲染
+    container.innerHTML = displayMedia.map((m, i) => `
+        <div class="gallery-item cursor-pointer" onclick="openLightbox(${i})">
+            ${m.type === 'video' ? `
+                <div class="play-overlay">
+                    <div class="play-btn">
+                        <svg class="w-5 h-5 text-white fill-current ml-0.5" viewBox="0 0 20 20">
+                            <path d="M6 4l10 6-10 6V4z"/>
+                        </svg>
                     </div>
-                `).join('');
+                </div>
+                <video class="media-thumb" preload="metadata" src="${m.root}${m.url}#t=0.5"></video>
+            ` : `
+                <img src="${m.root}${m.url}" class="media-thumb" loading="lazy">
+            `}
+        </div>
+    `).join('');
+}
 
-            } catch (err) {
-                console.error("載入失敗:", err);
-            }
-        }
+function openLightbox(index) {
+    currentIndex = index;
+    updateContent();
+    const lb = document.getElementById('lightbox');
+    lb.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
 
-        function openLightbox(index) {
-            currentIndex = index;
-            updateContent();
-            const lb = document.getElementById('lightbox');
-            lb.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
+function updateContent() {
+    if (!displayMedia[currentIndex]) return;
+    const m = displayMedia[currentIndex]; 
+    const img = document.getElementById('lbImg');
+    const video = document.getElementById('lbVid');
+    const cap = document.getElementById('lbCap');
 
-        function updateContent() {
-            const m = allMedia[currentIndex];
-            const img = document.getElementById('lbImg');
-            const video = document.getElementById('lbVid');
-            const cap = document.getElementById('lbCap');
+    img.classList.add('hidden');
+    video.classList.add('hidden');
+    video.pause();
 
-            img.classList.add('hidden');
-            video.classList.add('hidden');
-            video.pause();
+    if (m.type === 'video') {
+        video.src = `${m.root}${m.url}`;
+        video.classList.remove('hidden');
+        video.play();
+    } else {
+        img.src = `${m.root}${m.url}`;
+        img.classList.remove('hidden');
+    }
+    cap.textContent = `${currentIndex + 1} / ${displayMedia.length} (${m.url})`;
+}
 
-            if (m.type === 'video') {
-                video.src = `${m.root}${m.url}`;
-                video.classList.remove('hidden');
-                video.play();
-            } else {
-                img.src = `${m.root}${m.url}`;
-                img.classList.remove('hidden');
-            }
-            cap.textContent = `${currentIndex + 1} / ${allMedia.length} (${m.url})`;
-        }
+function closeLightbox() {
+    const lb = document.getElementById('lightbox');
+    document.getElementById('lbVid').pause();
+    lb.classList.remove('active');
+    document.body.style.overflow = '';
+}
 
-        function closeLightbox() {
-            const lb = document.getElementById('lightbox');
-            document.getElementById('lbVid').pause();
-            lb.classList.remove('active');
-            document.body.style.overflow = '';
-        }
+// ✅ 修正：使用 displayMedia.length 確保切換邏輯正確
+function nextImg(e) {
+    if (e) e.stopPropagation();
+    currentIndex = (currentIndex + 1) % displayMedia.length;
+    updateContent();
+}
 
-        function nextImg(e) {
-            e.stopPropagation();
-            currentIndex = (currentIndex + 1) % allMedia.length;
-            updateContent();
-        }
+function prevImg(e) {
+    if (e) e.stopPropagation();
+    currentIndex = (currentIndex - 1 + displayMedia.length) % displayMedia.length;
+    updateContent();
+}
 
-        function prevImg(e) {
-            e.stopPropagation();
-            currentIndex = (currentIndex - 1 + allMedia.length) % allMedia.length;
-            updateContent();
-        }
+document.addEventListener('keydown', (e) => {
+    if (!document.getElementById('lightbox').classList.contains('active')) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowRight') nextImg();
+    if (e.key === 'ArrowLeft') prevImg();
+});
 
-        document.addEventListener('keydown', (e) => {
-            if (!document.getElementById('lightbox').classList.contains('active')) return;
-            if (e.key === 'Escape') closeLightbox();
-            if (e.key === 'ArrowRight') nextImg({stopPropagation: ()=>{}});
-            if (e.key === 'ArrowLeft') prevImg({stopPropagation: ()=>{}});
-        });
-
-        window.onload = init;
-    </script>
+window.onload = init;
+</script>
 </body>
 </html>
