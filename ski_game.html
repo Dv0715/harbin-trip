@@ -6,13 +6,38 @@
     <title>哈爾濱支線｜滑雪大冒險</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; background: #0a0c12; color: white; font-family: 'Inter', sans-serif; overflow: hidden; touch-action: none; }
-        .snow-bg {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: linear-gradient(to bottom, #d6e2f0, #e0f2f7), url('https://i.imgur.com/P5j1w1h.png'), url('https://i.imgur.com/O61WJ7b.png');
-            background-repeat: no-repeat; background-size: 100% 100%, 150% auto, 120% auto; background-position: center bottom; z-index: -1;
-        }
-        #gameCanvas { background: none; display: block; margin: 0 auto; cursor: crosshair; } 
+        body { 
+    margin: 0; 
+    background: #000000; /* 改為純黑，凸顯遊戲區域 */
+    color: white; 
+    font-family: 'Inter', sans-serif; 
+    overflow: hidden; 
+    touch-action: none; 
+    display: flex; /* 讓內容置中 */
+    justify-content: center; 
+}
+/* 2. 限制雪地背景的寬度，使其與 Canvas 一致 */
+.snow-bg {
+    position: fixed; 
+    top: 0; 
+    left: 50%; 
+    transform: translateX(-50%); /* 水平置中 */
+    width: 100%; 
+    max-width: 500px; /* 這裡要跟 Canvas 的最大寬度一致 */
+    height: 100%;
+    background-image: linear-gradient(to bottom, #d6e2f0, #e0f2f7), url('https://i.imgur.com/P5j1w1h.png'), url('https://i.imgur.com/O61WJ7b.png');
+    background-repeat: no-repeat; 
+    background-size: 100% 100%, 150% auto, 120% auto; 
+    background-position: center bottom; 
+    z-index: -1;
+    box-shadow: 0 0 50px rgba(0,0,0,1); /* 側邊加上陰影，與黑底融合更自然 */
+}
+/* 3. 確保 Canvas 也有正確的顯示樣式 */
+#gameCanvas { 
+    background: none; 
+    display: block; 
+    box-shadow: 0 0 30px rgba(0,0,0,0.5); /* 增加一點點立體感 */
+} 
         .ui-panel { 
             position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; pointer-events: none; 
             background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); 
@@ -33,7 +58,27 @@
         .card-img { width: 100%; height: 100%; object-fit: cover; opacity: 1; display: block; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.75); color: white; font-size: 11px; padding: 4px 0; backdrop-filter: blur(3px); font-weight: 600; }
         #liveScore { font-family: 'Space Mono', monospace; font-size: 1.5rem; font-weight: bold; color: #6edaff; text-shadow: 0 0 8px rgba(110, 218, 255, 0.5); }
-        .score-panel { position: fixed; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); border: 1px solid rgba(50, 184, 236, 0.2); padding: 6px 16px; border-radius: 99px; z-index: 1000; display: flex; align-items: center; gap: 8px; transition: transform 0.2s; }
+        /* 1. 修正 UI 位置，確保在螢幕上層且不會被裁切 */
+.score-panel { 
+    position: fixed; 
+    top: 20px; 
+    right: 20px; /* 如果在電腦版還是看不到，請改為 right: calc(50% - 230px); 讓它貼著遊戲邊緣 */
+    background: rgba(0, 0, 0, 0.6); /* 加深背景，讓文字更明顯 */
+    backdrop-filter: blur(8px); 
+    border: 1px solid rgba(255, 255, 255, 0.2); 
+    padding: 8px 20px; 
+    border-radius: 99px; 
+    z-index: 2000; /* 提高層級 */
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+}
+/* 2. 針對電腦版寬螢幕的調整 */
+@media (min-width: 600px) {
+    .score-panel {
+        right: calc(50% - 240px); /* 讓分數面板貼在 500px 遊戲畫面的右側邊緣內 */
+    }
+}
         .score-panel::before { content: "分數"; font-size: 10px; font-weight: 900; color: rgba(255, 255, 255, 0.6); letter-spacing: 1px; }
         h1.title-bounce { font-weight: 900; font-style: italic; color: #93c5fd; text-shadow: 2px 2px 0px #1e3a8a, 4px 4px 15px rgba(0,0,0,0.5); }
         
@@ -251,17 +296,40 @@
         }
 
         // 移動與碰撞判定 (放在 score >= 300 之外，確保產生的雪球會持續移動)
-        for (let i = snowballs.length - 1; i >= 0; i--) {
+for (let i = snowballs.length - 1; i >= 0; i--) {
             let b = snowballs[i];
             b.y -= speed * 0.7; b.radius += b.growth;
             
             ctx.save();
-            let grad = ctx.createRadialGradient(b.x - b.radius/3, b.y - b.radius/3, b.radius/4, b.x, b.y, b.radius);
-            grad.addColorStop(0, '#ffffff'); grad.addColorStop(1, '#d1e9ff');
-            ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius * 0.8, 0, Math.PI * 0.5); ctx.stroke();
+            // A. 新增雪球底部的深色投影
+            ctx.shadowColor = "rgba(0, 30, 60, 0.4)"; // 深藍色陰影，比黑影更自然
+            ctx.shadowBlur = b.radius * 0.5;
+            ctx.shadowOffsetY = b.radius * 0.3;
+
+            // B. 強化雪球本體的立體漸層
+            let grad = ctx.createRadialGradient(
+                b.x - b.radius * 0.3, b.y - b.radius * 0.3, b.radius * 0.1, 
+                b.x, b.y, b.radius
+            );
+            grad.addColorStop(0, '#ffffff');    // 受光面
+            grad.addColorStop(0.7, '#e0f2ff');  // 中間色
+            grad.addColorStop(1, '#a1c4fd');    // 背光深色邊緣 (加深藍色調)
+            
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // C. 加上更明顯的旋轉線條感 (雪捲動的紋路)
+            ctx.shadowBlur = 0; // 清除投影，避免紋路變模糊
+            ctx.strokeStyle = 'rgba(0, 80, 150, 0.2)'; 
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius * 0.7, frame * 0.1, frame * 0.1 + Math.PI * 0.4);
+            ctx.stroke();
             ctx.restore();
 
+            // 碰撞判定維持原樣...
             if (powerUpTimer <= 0 && invincibilityTimer <= 0 && Math.hypot(px - b.x, py - b.y) < b.radius + 10) {
                 lives--; comboCount = 0; snowballs.splice(i, 1); invincibilityTimer = 60;
                 if (lives <= 0) triggerGameOver();
@@ -345,8 +413,12 @@
                 ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.translate(px, py); ctx.fillStyle = "#ff4d4d"; ctx.font = `bold ${Math.floor(drawW * 0.4)}px Inter`;
                 ctx.shadowColor = "white"; ctx.shadowBlur = 5; ctx.textAlign = 'center'; ctx.fillText("＋❤️", 0, -drawH - -20 - (40 - heartTimer)); ctx.restore();
             }
-            if (powerUpTimer > 0) { ctx.filter = `hue-rotate(${frame * 15}deg) brightness(1.2)`; ctx.shadowBlur = 15; ctx.shadowColor = "rgba(255, 215, 0, 0.8)"; }
-            ctx.drawImage(bodyImg, -drawW/2, -drawH + 5, drawW, drawH); ctx.filter = 'none';
+            if (powerUpTimer > 0) { 
+                ctx.shadowBlur = 15; 
+                ctx.shadowColor = "rgba(255, 215, 0, 0.8)"; 
+            }
+            ctx.drawImage(bodyImg, -drawW/2, -drawH + 5, drawW, drawH);
+            ctx.shadowBlur = 0; // 畫完身體就清除陰影
             if (faceImg && faceImg.complete && faceSuffix !== 'n') {
                 const faceW = drawW * (charData.faceScale || 0.6), faceH = faceImg.height * (faceW / faceImg.width);
                 ctx.drawImage(faceImg, (drawW * (charData.faceX || 0)) - faceW / 2, (-drawH * (charData.faceY || 0.75)) - faceH / 2, faceW, faceH);
@@ -357,7 +429,17 @@
                 ctx.beginPath(); ctx.roundRect(2 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
             }
             if (powerUpTimer > 0) {
-                ctx.save(); let glow = Math.sin(frame * 0.1) * 10 + 15; ctx.shadowColor = "rgba(99, 62, 12, 0.8)"; ctx.shadowBlur = glow; ctx.fillStyle = "#ffea4d"; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center'; ctx.fillText("🌟 無敵之身 🌟", 0, -drawH - 10 + Math.sin(frame * 0.05) * 5); ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; ctx.fillText("😎", 0, -drawH + 10); ctx.restore();
+                ctx.save(); 
+                let glow = Math.sin(frame * 0.1) * 10 + 15;
+                ctx.shadowColor = "rgba(99, 62, 12, 0.8)"; ctx.shadowBlur = glow;
+                ctx.fillStyle = "#ffea4d"; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center';
+                ctx.fillText("🌟 無敵之身 🌟", 0, -drawH - 10 + Math.sin(frame * 0.05) * 5);
+                
+                // --- 修正：只有這個 😎 變彩虹色 ---
+                ctx.filter = `hue-rotate(${frame * 15}deg)`; 
+                ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; 
+                ctx.fillText("😎", 0, -drawH + 10); 
+                ctx.restore();
             } else if (stormMode) {
                 ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.fillStyle = (frame % 20 < 10) ? '#ff4d4d' : '#ffcccc'; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center'; ctx.fillText("⚠️ 暴風雪來襲 ⚠️", (Math.random()-0.5)*3, -drawH - 30); ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; ctx.fillText("🥶", 0, -drawH + 10); ctx.restore();
             }
