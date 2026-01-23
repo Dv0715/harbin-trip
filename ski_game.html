@@ -109,15 +109,33 @@
         <button onclick="start()" class="btn-action text-xl px-12 py-4">開始滑雪</button>
     </div>
 
-    <div id="uiOver" class="ui-panel hidden pointer-events-auto text-center">
-        <div id="medalIcon" class="text-8xl mb-4 drop-shadow-lg"></div>
-        <div id="medalTitle" class="text-3xl font-bold mb-2 drop-shadow-md"></div>
-        <h2 class="text-5xl font-black text-red-400 mb-2 italic">摔倒了！</h2>
-        <p class="text-2xl mb-8">最終得分: <span id="finalScore" class="text-white font-bold">0</span></p>
-        <button onclick="location.reload()" class="btn-action bg-red-600">重新挑戰</button>
-    </div>
+<div id="uiOver" class="ui-panel hidden pointer-events-auto text-center">
+    <div id="medalIcon" class="text-8xl mb-4 drop-shadow-lg"></div>
+    <div id="medalTitle" class="text-3xl font-bold mb-2 drop-shadow-md"></div>
+    <h2 class="text-5xl font-black text-red-400 mb-2 italic">摔倒了！</h2>
+    <div class="mb-4">
+        <p class="text-2xl">最終得分: <span id="finalScore" class="text-white font-bold">0</span></p>
+        </div>
+    <button onclick="location.reload()" class="btn-action bg-red-600 px-12">重新挑戰</button>
+</div>
 
     <div class="score-panel"><span id="liveScore">0</span></div>
+
+<div id="pauseBtn" class="fixed top-[20px] left-[50%] translate-x-[-50%] z-[2000] cursor-pointer opacity-70 hover:opacity-100 hidden" onclick="togglePause()">
+    <div class="bg-black/40 backdrop-blur-md border border-white/20 p-2 rounded-full px-4 text-xs font-bold tracking-widest">
+        ⏸ 暫 停
+    </div>
+</div>
+
+<div id="uiPause" class="ui-panel hidden pointer-events-auto text-center">
+    <h2 class="text-5xl font-black text-blue-300 mb-10 italic">暫停中</h2>
+    <div class="flex flex-col gap-4">
+        <button onclick="togglePause()" class="btn-action bg-blue-600 px-12">繼續滑雪</button>
+        <button onclick="location.reload()" class="btn-action bg-gray-600 px-12">離開遊戲</button>
+    </div>
+</div>
+
+
     <canvas id="gameCanvas"></canvas>
 
 <script>
@@ -127,6 +145,7 @@
     let comboCount = 0, comboScale = 1, lives = 5, heartTimer = 0, invincibilityTimer = 0;
     const MAX_LIVES = 5;
     let highScore = localStorage.getItem('skiHighScore') || 0;
+    let isPaused = false; // 新增這行
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -140,6 +159,12 @@
         { name: "弟", file: "6", boardType: "single", size: 55, faceY: 0.569, faceScale: 0.496, faceX: -0.04 },
         { name: "Vivi", file: "7", boardType: "single", size: 55, faceY: 0.6065, faceScale: 0.5, faceX: -0.005 }
     ];
+
+const FOOD_FILES = ['1.webp', '2.webp', '3.webp', '4.webp'];
+const foodImages = {}; // 用來存放預載入的圖片
+
+
+
 
     const FACES = ['n', 's', 'h', 'e', 'd', 'b']; 
     const OBSTACLE_FILES = ['1.webp', '2.webp', '3.webp'];
@@ -159,12 +184,27 @@
             const img = new Image(); img.src = `images/obs/${file}`;
             obsImages[file] = img;
         });
+        FOOD_FILES.forEach(file => {
+    const img = new Image();
+    img.src = `images/food/${file}`;
+    foodImages[file] = img;
+});
     }
     preloadAssets();
 
     function updateScore(points) {
         const multiplier = 1 + Math.floor(comboCount / 10);
+        const oldScore = score;
         score += (points * multiplier);
+
+
+
+// 剛破紀錄的瞬間
+    if (oldScore <= highScore && score > highScore && highScore > 0) {
+        // 可以在這裡加一個標記，讓 loop 畫出一個慶祝特效
+        console.log("New Record Burst!");
+    }
+
         if (points === 1) { comboCount++; comboScale = 1.3; }
         const liveScoreEl = document.getElementById('liveScore');
         if (liveScoreEl) liveScoreEl.textContent = score;
@@ -195,16 +235,18 @@
         px = tx = canvas.width / 2;
     }
 
-    function start() {
-        resize(); 
-        document.getElementById('uiStart').classList.add('hidden');
-        document.getElementById('uiOver').classList.add('hidden');
-        highScore = localStorage.getItem('skiHighScore') || 0;
-        running = true; score = 0; lives = 5; comboCount = 0; speed = 7; 
-        obstacles = []; items = []; particles = []; snowballs = [];
-        px = tx = canvas.width / 2;
-        loop();
-    }
+function start() {
+    resize(); 
+    document.getElementById('uiStart').classList.add('hidden');
+    document.getElementById('uiOver').classList.add('hidden');
+    document.getElementById('pauseBtn').classList.remove('hidden'); // 顯示暫停按鈕
+    
+    isPaused = false; // 重設狀態
+    running = true; score = 0; lives = 5; comboCount = 0; speed = 7; 
+    obstacles = []; items = []; particles = []; snowballs = [];
+    px = tx = canvas.width / 2;
+    loop();
+}
 
     const move = (e) => {
         if(!running) return;
@@ -217,7 +259,7 @@
     window.addEventListener('touchstart', move, { passive: false });
 
     function loop() {
-        if(!running) return;
+        if(!running || isPaused) return; // 修改這行，加入 isPaused 判定
         frame++; 
 
         if (powerUpTimer > 0) { powerUpTimer--; friction = 0.15; }
@@ -240,20 +282,83 @@
         }
         ctx.restore();
 
-        // 2. 道具
-        if(frame % 250 === 0) {
-            const type = Math.random() > 0.7 ? '⭐' : '❤️';
-            items.push({ x: Math.random() * (canvas.width - 80) + 40, y: canvas.height + 100, type: type });
+
+
+// --- 2.1 統一道具生成入口 (機率：星星 > 愛心 > 美食) ---
+        if (frame % 150 === 0) { // 稍微加快生成節奏 (約 2.5 秒一次)
+            const rand = Math.random();
+            let type = null, file = null;
+
+            if (rand < 0.40) {         // 0% ~ 40% (40% 機率)
+                type = '⭐'; 
+            } else if (rand < 0.70) {  // 40% ~ 70% (30% 機率)
+                type = '❤️'; 
+            } else if (rand < 0.95) {  // 70% ~ 95% (25% 機率)
+                type = 'FOOD'; 
+                file = FOOD_FILES[Math.floor(Math.random() * FOOD_FILES.length)];
+            }
+            // 剩下 5% 機率空盤，增加隨機感
+
+            if (type) {
+                items.push({ 
+                    x: Math.random() * (canvas.width - 80) + 40, 
+                    y: canvas.height + 100, 
+                    type: type,
+                    file: file,
+                    rotate: 0 
+                });
+            }
         }
+
+        // --- 2.2 統一處理所有道具 (移動、繪製、碰撞) ---
         for (let i = items.length - 1; i >= 0; i--) {
-            let item = items[i]; item.y -= speed;
-            ctx.font = '40px serif'; ctx.textAlign = 'center';
-            ctx.fillText(item.type, item.x, item.y);
-            if(Math.hypot(px - item.x, py - item.y) < 45) { 
-                if (item.type === '❤️') { if (lives < MAX_LIVES) lives++; updateScore(5); heartTimer = 40; }
-                else if (item.type === '⭐') { powerUpTimer = 180; updateScore(20); }
+            let item = items[i]; 
+            item.y -= speed; 
+
+            if (item.type === 'FOOD' && item.file) {
+                // 繪製：美食圖片 (帶有呼吸跳動特效)
+                const img = foodImages[item.file];
+                if (img && img.complete) {
+                    ctx.save();
+                    ctx.shadowColor = "rgba(255, 223, 0, 0.9)";
+                    ctx.shadowBlur = 15 + Math.sin(frame * 0.1) * 8; 
+                    item.rotate = (item.rotate || 0) + 0.05;
+                    const bobbing = Math.sin(frame * 0.1) * 5;
+                    const pulse = 1.1 + Math.sin(frame * 0.1) * 0.2; 
+                    ctx.translate(item.x, item.y + bobbing);
+                    ctx.rotate(Math.sin(item.rotate) * 0.2); 
+                    ctx.scale(pulse, pulse);
+                    ctx.drawImage(img, -22, -22, 44, 44); 
+                    ctx.restore();
+                }
+            } else {
+                // 繪製：星星 ⭐ 與愛心 ❤️ (Emoji 版)
+                ctx.save();
+                ctx.font = '40px serif'; 
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // 讓 Emoji 也會上下浮動跟發光
+                //ctx.shadowColor = (item.type === '⭐') ? "rgba(255, 255, 0, 0.8)" : "rgba(255, 0, 0, 0.8)";
+                //ctx.shadowBlur = 15;
+                ctx.fillText(item.type, item.x, item.y + Math.sin(frame * 0.1) * 5);
+                ctx.restore();
+            }
+
+            // 碰撞偵測 (半徑 50)
+            if (Math.hypot(px - item.x, py - item.y) < 50) { 
+                if (item.type === '❤️') {
+                    if (lives < MAX_LIVES) lives++; 
+                    updateScore(5); heartTimer = 40;
+                } else if (item.type === '⭐') {
+                    powerUpTimer = 180; updateScore(20);
+                } else if (item.type === 'FOOD') {
+                    score += 30; // 直接加死，不乘 multiplier
+    heartTimer = 30; 
+                }
                 items.splice(i, 1); 
-            } else if(item.y < -100) { items.splice(i, 1); }
+            } else if (item.y < -150) { 
+                items.splice(i, 1); 
+            }
         }
 
         // 3. 障礙物
@@ -269,10 +374,10 @@
             if (powerUpTimer > 0 && Math.hypot(px - o.x, py - o.y) < config.r + 20) ctx.globalAlpha = 0.3;
             if (img && img.complete) ctx.drawImage(img, o.x - config.w / 2, o.y - config.h / 2, config.w, config.h);
             ctx.restore();
-            if (powerUpTimer <= 0 && invincibilityTimer <= 0 && Math.hypot(px - o.x, py - o.y) < config.r) {
+            if (powerUpTimer <= 0 && invincibilityTimer <= 0 && Math.hypot(px - o.x, py - o.y) < config.r + 5) {
                 lives--; comboCount = 0; obstacles.splice(i, 1); invincibilityTimer = 60;
                 if (lives <= 0) triggerGameOver(); 
-            } else if(o.y < -150) { obstacles.splice(i, 1); updateScore(1); if(score % 5 === 0) speed += 0.2; }
+            } else if(o.y < -150) { obstacles.splice(i, 1); updateScore(1); if(score % 5 === 0 && speed < 18) speed += 0.2;} // 限制最高速度為 18}
         }
 
 // --- 4. 雪球提示與生成邏輯 ---
@@ -375,15 +480,64 @@ for (let i = snowballs.length - 1; i >= 0; i--) {
             }
         }
 
+// --- 新增：滑雪痕跡粒子生成 ---
+if (frame % 2 === 0) {
+    particles.push({ 
+        x: px, // 存儲當下人物的絕對 X
+        y: py + 25, 
+        vx: 0, 
+        vy: 0, 
+        life: 30, 
+        alpha: 0.3, 
+        isTrack: true, 
+        width: CHARS[selectedIdx].boardType === 'double' ? 12 : 22 
+    });
+}
+
+
+// --- 5.1 滑雪痕跡與激起雪花生成 (確保這段獨立在最外層) ---
+        if (frame % 2 === 0) {
+            // 1. 生成地面滑痕 (isTrack: true)
+            particles.push({ 
+                x: px, 
+                y: py + 25, 
+                vx: 0, 
+                vy: 0, 
+                life: 35, 
+                alpha: 0.3, 
+                isTrack: true, 
+                width: CHARS[selectedIdx].boardType === 'double' ? 12 : 22 
+            });
+
+            // 2. 生成向左右飛散的雪花 (isTrack: false)
+            const spread = 15; 
+            [-1, 1].forEach(side => {
+                particles.push({
+x: px + (side * spread) + (Math.random() - 0.5) * 5, // 錯開中心點
+                    y: py + 20,
+                    vx: side * (1 + Math.random() * 3),// 左側粒子往左跑 (負數)，右側往右跑 (正數)
+                    vy: (Math.random() * 2),            // 稍微往下掉一點
+                    life: 12 + Math.random() * 8,       // 噴濺雪花壽命短一點，更有爆發感
+                    alpha: 0.6,
+                    isTrack: false,
+                    isStorm: false
+                });
+            });
+        }
+
+
+
+
         // 5. 玩家渲染
         updateParticlesLogic();
+        drawParticlesRelative();
         ctx.save(); 
         if (invincibilityTimer > 0) { invincibilityTimer--; if (frame % 6 < 3) ctx.globalAlpha = 0.2; }
         if (stormMode) ctx.translate((Math.random()-0.5)*5, (Math.random()-0.5)*5);
         ctx.translate(px, py);
         let tilt = Math.max(-0.2, Math.min(0.2, (tx - px) * 0.05));
         let tipSwing = tilt * 30;
-        drawParticlesRelative();
+        
         
         // 雪板
         ctx.save(); ctx.strokeStyle = '#3D3333'; ctx.lineWidth = (CHARS[selectedIdx].boardType === 'double') ? 10 : 25; ctx.lineCap = 'round';
@@ -413,9 +567,13 @@ for (let i = snowballs.length - 1; i >= 0; i--) {
                 ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.translate(px, py); ctx.fillStyle = "#ff4d4d"; ctx.font = `bold ${Math.floor(drawW * 0.4)}px Inter`;
                 ctx.shadowColor = "white"; ctx.shadowBlur = 5; ctx.textAlign = 'center'; ctx.fillText("＋❤️", 0, -drawH - -20 - (40 - heartTimer)); ctx.restore();
             }
-            if (powerUpTimer > 0) { 
+if (powerUpTimer > 0) { 
+                // 1. 設定閃爍濾鏡：每 2 幀切換一次「高亮金」與「原色」
+                ctx.filter = (frame % 4 < 2) ? 'brightness(1.5) sepia(0.5)' : 'none'; 
+                
+                // 2. 設定外發光陰影
                 ctx.shadowBlur = 15; 
-                ctx.shadowColor = "rgba(255, 215, 0, 0.8)"; 
+                ctx.shadowColor = "rgba(255, 215, 0, 0.8)"; // 亮金色
             }
             ctx.drawImage(bodyImg, -drawW/2, -drawH + 5, drawW, drawH);
             ctx.shadowBlur = 0; // 畫完身體就清除陰影
@@ -448,8 +606,55 @@ for (let i = snowballs.length - 1; i >= 0; i--) {
 
         if (stormMode) { for(let i = 0; i < 20; i++) addStormParticle(); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.restore(); }
 
-        if (comboCount >= 3) {
-            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); if (comboScale > 1) comboScale -= 0.05; ctx.translate(canvas.width - 25, 100); ctx.scale(comboScale, comboScale); ctx.shadowColor = '#ffeb3b'; ctx.shadowBlur = 10; ctx.font = 'bold 24px "Space Mono", monospace'; ctx.textAlign = 'right'; let grad = ctx.createLinearGradient(0, -10, 0, 10); grad.addColorStop(0, '#fff176'); grad.addColorStop(1, '#f57f17'); ctx.fillStyle = grad; ctx.fillText(`${comboCount} COMBO`, 0, 0); ctx.strokeStyle = 'white'; ctx.lineWidth = 1; ctx.strokeText(`${comboCount} COMBO`, 0, 0); ctx.restore();
+if (comboCount >= 3) {
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            if (comboScale > 1) comboScale -= 0.05;
+            ctx.translate(canvas.width - 25, 110);
+            ctx.scale(comboScale, comboScale);
+            
+            // --- 💡 動態顏色與特效邏輯 ---
+            let comboColor, shadowColor, glowBlur = 10;
+            let label = " COMBO";
+
+            if (comboCount >= 60) {
+                // 🔥 100連擊：紅色 + 著火閃爍感
+                comboColor = "#ff0000";
+                shadowColor = (frame % 10 < 5) ? "#ffea00" : "#ff4500"; // 橙黃閃爍火光
+                glowBlur = 20 + Math.sin(frame * 0.2) * 10; // 呼吸跳動的火光
+                label = " COMBO🔥"; // 隱藏彩蛋稱號
+            } else if (comboCount >= 40) {
+                // 🍊 50連擊：橘色 + 強烈發光
+                comboColor = "#ffcb21";
+                shadowColor = "#f57f17";
+                glowBlur = 15;
+            } else {
+                // 🟡 初始：黃色 (維持原樣)
+               comboColor = "#ff9800";
+                shadowColor = "#ffeb3b";
+            }
+
+            ctx.shadowColor = shadowColor;
+            ctx.shadowBlur = glowBlur;
+            ctx.font = 'bold 28px "Space Mono", monospace'; // 稍微加大字體
+            ctx.textAlign = 'right';
+
+            // 繪製漸層文字
+            let grad = ctx.createLinearGradient(0, -15, 0, 15);
+            grad.addColorStop(0, "white"); // 頂部發白看起來更有立體感
+            grad.addColorStop(1, comboColor);
+            
+            ctx.fillStyle = grad;
+            ctx.fillText(`${comboCount}${label}`, 0, 0);
+            
+            // 如果超過 100，額外加一層外框增強「著火」視覺
+            if (comboCount >= 100) {
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 1;
+                ctx.strokeText(`${comboCount}${label}`, 0, 0);
+            }
+            
+            ctx.restore();
         }
 
         ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = "24px serif"; ctx.textAlign = "left";
@@ -461,30 +666,134 @@ for (let i = snowballs.length - 1; i >= 0; i--) {
 
     function addParticle(x, y, vx, vy) { if (particles.length < 150) particles.push({ x, y, vx, vy, life: 30, alpha: 1, isStorm: false }); }
     function addStormParticle() { if (particles.length < 350) particles.push({ x: Math.random() * (canvas.width + 600) - 200, y: Math.random() * -200, vx: -15 - Math.random() * 20, vy: 20 + Math.random() * 15, life: 30, alpha: 0.3 + Math.random() * 0.5, isStorm: true, size: 1 + Math.random() * 3 }); }
-    function updateParticlesLogic() { for (let i = particles.length - 1; i >= 0; i--) { let p = particles[i]; p.x += p.vx; p.y += p.vy; if (!p.isStorm) p.y -= speed * 0.5; p.life--; p.alpha = p.life / 30; if (p.life <= 0) particles.splice(i, 1); } }
-    function drawParticlesRelative() { particles.forEach(p => { ctx.save(); ctx.globalAlpha = p.alpha; ctx.strokeStyle = 'white'; ctx.fillStyle = 'white'; if (p.isStorm) { ctx.lineWidth = p.size; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8); ctx.stroke(); } else { ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); }); }
+    function updateParticlesLogic() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.isTrack) {
+            p.y -= speed ; // 痕跡緊貼地面移動
+            p.alpha = (p.life / 35) * 0.3;
+        } else if (!p.isStorm) {
+            p.y -= speed* 0.5; // 激起的雪花也隨著地面後退
+            p.alpha = (p.life / 25);
+        }
+        
+        p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+}
+function drawParticlesRelative() {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置矩陣確保絕對座標繪製
+
+    particles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+
+        if (p.isTrack) {
+            // --- 繪製：地面滑痕 ---
+            ctx.fillStyle = 'rgba(100, 130, 170, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, p.width / 2, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // --- 繪製：激起的雪花與暴風雪 ---
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'white';
+            if (p.isStorm) {
+                // 暴風雪粒子維持絕對位置
+                ctx.lineWidth = p.size;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8);
+                ctx.stroke();
+            } else {
+                // 滑行雪花粒子：因為我們現在用絕對矩陣，要確保生成時就給它正確的 x, y
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+    });
+    ctx.restore();
+}
+
+function togglePause() {
+    if (!running) return; // 如果已經結束了就不動作
+    
+    isPaused = !isPaused;
+    const pauseUI = document.getElementById('uiPause');
+    const pauseBtn = document.getElementById('pauseBtn');
+
+    if (isPaused) {
+        pauseUI.classList.remove('hidden');
+        pauseBtn.classList.add('hidden'); // 暫停時隱藏按鈕避免重複點擊
+    } else {
+        pauseUI.classList.add('hidden');
+        pauseBtn.classList.remove('hidden');
+        requestAnimationFrame(loop); // 恢復後重新啟動循環
+    }
+}
+
+
 
 function triggerGameOver() {
     running = false;
+    document.getElementById('pauseBtn').classList.add('hidden'); // 結束時把按鈕藏起來
     let medal = "❄️", title = "再接再厲", colorClass = "text-gray-400";
+    let nextMsg = ""; // 存儲下一階提示
 
-    // 必須從最高分開始判定！
-    if (score >= 1500) {
-        medal = "👑"; title = "冰城至尊"; colorClass = "text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white font-black italic"; 
-    } else if (score >= 1000) {
-        medal = "💎"; title = "索菲亞之星"; colorClass = "text-cyan-300 drop-shadow-[0_0_10px_rgba(103,232,249,0.8)]"; 
-    } else if (score >= 700) {
-        medal = "🥇"; title = "哈爾濱滑雪傳說"; colorClass = "text-yellow-400";
-    } else if (score >= 500) {
-        medal = "🥈"; title = "專業滑雪手"; colorClass = "text-gray-200";
-    } else if (score >= 200) {
-        medal = "🥉"; title = "亞布力新手"; colorClass = "text-orange-400";
+    // 定義門檻與資訊
+    const tiers = [
+        { score: 2500, medal: "👑", title: "冰城至尊", color: "text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white font-black italic" },
+        { score: 1700, medal: "💎", title: "哈爾濱鑽石", color: "text-cyan-300 drop-shadow-[0_0_10px_rgba(103,232,249,0.8)]" },
+        { score: 1300, medal: "🥇", title: "哈爾濱傳說", color: "text-yellow-400" },
+        { score: 900, medal: "🥈", title: "專業滑雪手", color: "text-gray-200" },
+        { score: 600, medal: "🥉", title: "亞布力勇士", color: "text-orange-400" },
+        { score: 400, medal: "🥽", title: "滑雪道挑戰中", color: "text-yellow-200" },
+        { score: 200, medal: "🍬", title: "滑雪初體驗", color: "text-green-300" }
+    ];
+
+    // 判定當前等級
+    let currentTierIdx = -1;
+    for (let i = 0; i < tiers.length; i++) {
+        if (score >= tiers[i].score) {
+            currentTierIdx = i;
+            medal = tiers[i].medal;
+            title = tiers[i].title;
+            colorClass = tiers[i].color;
+            break;
+        }
     }
 
+    // 計算「下一階」提示
+    if (currentTierIdx === 0) {
+        nextMsg = "🎉 已達到最高榮譽！";
+    } else {
+        let nextTier = tiers[currentTierIdx === -1 ? tiers.length - 1 : currentTierIdx - 1];
+        let diff = nextTier.score - score;
+        nextMsg = `離下一階【${nextTier.title}】還差 <span class="text-yellow-300 font-bold">${diff}</span> 分`;
+    }
+
+    // 更新 UI
     document.getElementById('uiOver').classList.remove('hidden');
     document.getElementById('medalIcon').textContent = medal;
     document.getElementById('medalTitle').textContent = title;
     document.getElementById('medalTitle').className = `text-3xl font-bold mb-2 ${colorClass} drop-shadow-md`;
+    
+    // 插入下一階提示訊息 (假設我們在 finalScore 下面放一個 div)
+    const scoreContainer = document.getElementById('finalScore').parentElement;
+    let nextTierEl = document.getElementById('nextTierTier');
+    if (!nextTierEl) {
+        nextTierEl = document.createElement('p');
+        nextTierEl.id = 'nextTierTier';
+        nextTierEl.className = 'text-sm text-blue-200 mt-2 opacity-80 italic';
+        scoreContainer.parentNode.insertBefore(nextTierEl, scoreContainer.nextSibling);
+    }
+    nextTierEl.innerHTML = nextMsg;
     
     // 分數紀錄邏輯
     let highScore = localStorage.getItem('skiHighScore') || 0;
