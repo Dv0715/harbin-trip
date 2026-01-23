@@ -75,6 +75,12 @@
     align-items: center; 
     gap: 8px; 
 }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+
+
 /* 2. 針對電腦版寬螢幕的調整 */
 @media (min-width: 600px) {
     .score-panel {
@@ -119,6 +125,17 @@
 </div>
         <button onclick="start()" class="btn-action text-xl px-12 py-4">開始滑雪</button>
     </div>
+
+<div id="uiOver" class="ui-panel hidden pointer-events-auto text-center overflow-y-auto">
+    <div class="w-full max-w-[320px] bg-white/10 rounded-2xl p-4 my-4 backdrop-blur-md border border-white/10 text-left">
+        <h3 class="text-blue-200 font-bold text-sm mb-2 border-b border-white/10 pb-1">🏆 家族英雄榜 (Top 30)</h3>
+        <div id="endGameList" class="max-h-[200px] overflow-y-auto pr-2 custom-scrollbar space-y-1 text-[11px]">
+            </div>
+    </div>
+
+    <button onclick="location.reload()" class="btn-action bg-red-600 px-12">重新挑戰</button>
+</div>
+
 
 
 
@@ -813,7 +830,40 @@ function togglePause() {
 
 function triggerGameOver() {
     running = false;
-    document.getElementById('pauseBtn').classList.add('hidden'); // 結束時把按鈕藏起來
+    document.getElementById('pauseBtn').classList.add('hidden');
+    
+    const playerName = CHARS[selectedIdx].name;
+    const currentScore = score;
+    
+    // 1. 上傳分數
+    uploadScore(playerName, currentScore, playerName);
+
+    // 2. 獲取前 30 名並渲染排行榜
+    database.ref('leaderboard').orderByChild('score').limitToLast(30).once('value', (snapshot) => {
+        let scores = [];
+        snapshot.forEach(child => {
+            scores.push({ ...child.val(), id: child.key });
+        });
+        scores.reverse(); // 高分在前
+
+        const endListEl = document.getElementById('endGameList');
+        if (endListEl) {
+            let foundPlayer = false;
+            endListEl.innerHTML = scores.map((s, i) => {
+                const isCurrentRun = (s.score === currentScore && s.name === playerName && !foundPlayer);
+                if (isCurrentRun) foundPlayer = true; // 標記已找到當次分數，避免同分誤標
+
+                return `
+                    <div class="flex justify-between items-center py-1 px-2 rounded ${isCurrentRun ? 'bg-blue-500/40 border border-blue-400 animate-pulse' : ''}">
+                        <span class="${isCurrentRun ? 'font-bold text-white' : 'text-blue-100'}">
+                            ${i + 1}. ${s.name} ${isCurrentRun ? '🚩 (你)' : ''}
+                        </span>
+                        <span class="font-mono ${isCurrentRun ? 'text-white' : 'text-yellow-400'}">${s.score}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+    });
     let medal = "❄️", title = "再接再厲", colorClass = "text-gray-400";
     let nextMsg = ""; // 存儲下一階提示
 
