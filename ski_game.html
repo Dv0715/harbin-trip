@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>哈爾濱支線｜滑雪大冒險</title>
@@ -102,12 +104,23 @@
 <body>
 
     <div class="snow-bg"></div>
+
+
+    
     <div id="uiStart" class="ui-panel pointer-events-auto">
         <h1 class="text-5xl font-black italic mb-3 text-blue-300 title-bounce">滑雪挑戰GO！🧊</h1>
         <p class="text-gray-300 mb-10 text-sm tracking-widest uppercase">❄️ Yabuli Special Edition ❄️</p>
         <div id="charSelect"></div>
+        <div id="leaderboardUI" class="w-full max-w-[280px] bg-black/40 backdrop-blur-md rounded-2xl p-4 mb-6 border border-white/10 text-left">
+    <h3 class="text-blue-300 font-bold text-sm mb-2 flex items-center gap-2">🏆 家族榮譽榜</h3>
+    <div id="scoreList" class="space-y-1">
+        <p class="text-gray-500 animate-pulse text-xs">連線中...</p>
+    </div>
+</div>
         <button onclick="start()" class="btn-action text-xl px-12 py-4">開始滑雪</button>
     </div>
+
+
 
 <div id="uiOver" class="ui-panel hidden pointer-events-auto text-center">
     <div id="medalIcon" class="text-8xl mb-4 drop-shadow-lg"></div>
@@ -139,6 +152,64 @@
     <canvas id="gameCanvas"></canvas>
 
 <script>
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAzWWPB0u797OIEO7uF5zVtujao3cLc2qk",
+    authDomain: "harbinskigame.firebaseapp.com",
+    projectId: "harbinskigame",
+    storageBucket: "harbinskigame.firebasestorage.app",
+    messagingSenderId: "440536889148",
+    appId: "1:440536889148:web:ba6502acabdfd1cf311039",
+    measurementId: "G-JD786HV9CS"
+  };
+
+
+// 初始化連線
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+// --- 2. 上傳分數函式 ---
+function uploadScore(userName, finalScore, charName) {
+    if (finalScore < 100) return; // 門檻：100分以上才上傳
+    
+    const scoreData = {
+        name: userName,
+        score: finalScore,
+        character: charName,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    const newScoreKey = database.ref().child('leaderboard').push().key;
+    database.ref('/leaderboard/' + newScoreKey).set(scoreData);
+}
+
+// --- 3. 排行榜即時監聽與更新 ---
+function initLeaderboard() {
+    // 監聽分數最高的 5 名 (依 score 排序)
+    database.ref('leaderboard').orderByChild('score').limitToLast(5).on('value', (snapshot) => {
+        let scores = [];
+        snapshot.forEach(child => scores.push(child.val()));
+        scores.reverse(); // 由高到低排列
+
+        const listEl = document.getElementById('scoreList');
+        if (!listEl) return;
+        
+        if (scores.length === 0) {
+            listEl.innerHTML = '<p class="text-gray-500 italic">目前尚無紀錄</p>';
+            return;
+        }
+
+        listEl.innerHTML = scores.map((s, i) => `
+            <div class="flex justify-between items-center py-1 border-b border-white/5 last:border-0">
+                <span class="text-blue-200">${i+1}. ${s.name} <span class="text-[10px] opacity-50">(${s.character})</span></span>
+                <span class="font-mono text-yellow-400 font-bold">${s.score}</span>
+            </div>
+        `).join('');
+    });
+}
+
+
+
     let items = [], particles = [], obstacles = [], snowballs = [];
     let powerUpTimer = 0, stormMode = false, stormTimer = 0, friction = 0.12; 
     let selectedIdx = 4, running = false, score = 0, frame = 0, speed = 7, px, py = 150, tx;
@@ -803,8 +874,11 @@ function triggerGameOver() {
     } else {
         document.getElementById('finalScore').innerHTML = `${score} <br><span class="text-sm text-gray-400">歷史最高: ${highScore}</span>`;
     }
+   // 在 triggerGameOver 的最後
+uploadScore(CHARS[selectedIdx].name, score, CHARS[selectedIdx].name); 
 }
     window.onresize = resize; resize(); initCharSelect();
+    initLeaderboard();
 </script>
 </body>
 </html>
