@@ -1,13 +1,84 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>哈爾濱支線｜滑雪大冒險</title>
+
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+
+
+
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+
+/* 高手榜容器，確保內容不會溢出 */
+#leaderboardWrapper {
+    display: flex;
+    flex-direction: column;
+    max-height: 55vh;
+}
+
+
+/* 調整原本的清單為捲動區 */
+#leaderboardList {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    padding: 10px;
+    overflow-y: auto;
+    
+    /* 💡 修改這裡：將 35vh 或 40vh 改小，清單就會縮短 */
+    max-height: 45vh; 
+    
+    flex: 1; 
+}
+
+/* 個人置底區塊 */
+#personalRankSticky {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    background: linear-gradient(to right, rgba(0, 123, 255, 0.6), rgba(0, 86, 179, 0.8));
+    border: 1px solid rgba(110, 218, 255, 0.4);
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.3);
+}
+
+.btn-rename {
+    background: #FFD700;
+    color: #000;
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.btn-rename:active { transform: scale(0.9); }
+
+
+/* 美化滾動條 */
+#leaderboardList::-webkit-scrollbar { width: 6px; }
+#leaderboardList::-webkit-scrollbar-thumb {
+    background: rgba(110, 218, 255, 0.5);
+    border-radius: 10px;
+}
+
         body { 
     margin: 0; 
     background: #000000; /* 改為純黑，凸顯遊戲區域 */
@@ -75,9 +146,50 @@
     align-items: center; 
     gap: 8px; 
 }
+
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+
+@keyframes score-jump {
+    0% { transform: scale(1); color: #6edaff; }
+    30% { transform: scale(1.5); color: #FFD700; text-shadow: 0 0 20px #FFD700; }
+    100% { transform: scale(1); color: #6edaff; }
+}
+.score-active { animation: score-jump 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+@keyframes score-zoom-in {
+    0% { transform: scale(0.5); opacity: 0; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+}
+/* 橘紅色與跳動動畫 */
+.score-highlight-group {
+    color: #ffc422; /* 橘紅色，介於橘與紅之間 */
+    font-weight: 900;
+    text-shadow: 0 0 15px rgba(255, 87, 34, 0.4);
+    display: inline-block;
+    animation-fill-mode: forwards; /* 💡 加入這一行，防止跳動 */
+    animation: score-bounce 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes score-bounce {
+    0% { transform: scale(0); opacity: 0; }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* 讓最終得分四個字稍微小一點，數字大一點，更有層次 */
+.score-label {
+    font-size: 1.5rem;
+    vertical-align: middle;
+}
+.score-number {
+    font-size: 2rem;
+    vertical-align: middle;
+    margin-left: 5px;
+}
 
 
 
@@ -110,50 +222,45 @@
 <body>
 
     <div class="snow-bg"></div>
-
-
-    
     <div id="uiStart" class="ui-panel pointer-events-auto">
         <h1 class="text-5xl font-black italic mb-3 text-blue-300 title-bounce">滑雪挑戰GO！🧊</h1>
         <p class="text-gray-300 mb-10 text-sm tracking-widest uppercase">❄️ Yabuli Special Edition ❄️</p>
         <div id="charSelect"></div>
-        <div id="leaderboardUI" class="w-full max-w-[280px] bg-black/40 backdrop-blur-md rounded-2xl p-4 mb-6 border border-white/10 text-left">
-    <h3 class="text-blue-300 font-bold text-sm mb-2 flex items-center gap-2">🏆 家族榮譽榜</h3>
-    <div id="scoreList" class="space-y-1">
-        <p class="text-gray-500 animate-pulse text-xs">連線中...</p>
-    </div>
-</div>
         <button onclick="start()" class="btn-action text-xl px-12 py-4">開始滑雪</button>
     </div>
 
-<div id="uiOver" class="ui-panel hidden pointer-events-auto text-center overflow-y-auto">
-    <div class="w-full max-w-[320px] bg-white/10 rounded-2xl p-4 my-4 backdrop-blur-md border border-white/10 text-left">
-        <h3 class="text-blue-200 font-bold text-sm mb-2 border-b border-white/10 pb-1">🏆 家族英雄榜 (Top 30)</h3>
-        <div id="endGameList" class="max-h-[200px] overflow-y-auto pr-2 custom-scrollbar space-y-1 text-[11px]">
+<div id="uiOver" class="ui-panel hidden pointer-events-auto text-center">
+    
+    <div id="gameOverResult" class="flex flex-col items-center">
+        <div id="medalIcon" class="text-8xl mb-4 drop-shadow-lg"></div>
+        <h3 class="text-1xl font-bold mb-2 drop-shadow-md text-gray-400">獲得稱號</h3>
+        <div id="medalTitle" class="text-3xl font-bold mb-2 drop-shadow-md"></div>
+        
+        <h2 class="text-5xl font-black  mb-2 italic">摔倒了！</h2>   
+        <div class="mb-4">
+            <p class="text-2xl text-yellow-400 ">最終得分: <span id="finalScore" class="text-yellow-400  font-bold">0</span></p>
             </div>
+        <button onclick="showLeaderboardPage()" class="btn-action bg-blue-500 px-12 mt-4">查看排名 🏆</button>
     </div>
 
-    <button onclick="location.reload()" class="btn-action bg-red-600 px-12">重新挑戰</button>
-</div>
-
-
-
-
-<div id="uiOver" class="ui-panel hidden pointer-events-auto text-center">
-    <div id="medalIcon" class="text-8xl mb-4 drop-shadow-lg"></div>
-    <div id="medalTitle" class="text-3xl font-bold mb-2 drop-shadow-md"></div>
-    <h2 class="text-5xl font-black text-red-400 mb-2 italic">摔倒了！</h2>
-    <div class="mb-4">
-        <p class="text-2xl">最終得分: <span id="finalScore" class="text-white font-bold">0</span></p>
+    <div id="gameOverLeaderboard" class="hidden flex flex-col items-center w-full px-4">
+        <h3 class="text-blue-300 font-bold mb-2">🏆 亞布力高手榜</h3>
+        <div id="leaderboardWrapper" class="w-full">
+            <div id="leaderboardList" class="text-sm custom-scrollbar">
+                載入中...
+            </div>
+            <div id="personalRankSticky"></div>
         </div>
-    <button onclick="location.reload()" class="btn-action bg-red-600 px-12">重新挑戰</button>
+        <button onclick="location.reload()" class="btn-action bg-red-600 px-12 mt-6">重新挑戰</button>
+    </div>
+
 </div>
 
     <div class="score-panel"><span id="liveScore">0</span></div>
 
 <div id="pauseBtn" class="fixed top-[20px] left-[50%] translate-x-[-50%] z-[2000] cursor-pointer opacity-70 hover:opacity-100 hidden" onclick="togglePause()">
     <div class="bg-black/40 backdrop-blur-md border border-white/20 p-2 rounded-full px-4 text-xs font-bold tracking-widest">
-        ⏸ 暫 停
+        ⏸STOP
     </div>
 </div>
 
@@ -168,11 +275,14 @@
 
     <canvas id="gameCanvas"></canvas>
 
+
 <script>
+
 
   const firebaseConfig = {
     apiKey: "AIzaSyAzWWPB0u797OIEO7uF5zVtujao3cLc2qk",
     authDomain: "harbinskigame.firebaseapp.com",
+    databaseURL: "https://harbinskigame-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "harbinskigame",
     storageBucket: "harbinskigame.firebasestorage.app",
     messagingSenderId: "440536889148",
@@ -181,51 +291,19 @@
   };
 
 
-// 初始化連線
+
+  
+// 初始化 Firebase
 firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+const database = firebase.database(); // 讓後面的 database.ref 能夠運作
 
-// --- 2. 上傳分數函式 ---
-function uploadScore(userName, finalScore, charName) {
-    if (finalScore < 100) return; // 門檻：100分以上才上傳
-    
-    const scoreData = {
-        name: userName,
-        score: finalScore,
-        character: charName,
-        timestamp: firebase.database.ServerValue.TIMESTAMP
-    };
+// 在 start() 裡面
+const savedName = localStorage.getItem('skiPlayerName');
+window.playerName = savedName || prompt("請輸入你的滑雪大名：", "神秘滑雪客") || "匿名玩家";
+localStorage.setItem('skiPlayerName', window.playerName);
 
-    const newScoreKey = database.ref().child('leaderboard').push().key;
-    database.ref('/leaderboard/' + newScoreKey).set(scoreData);
-}
-
-// --- 3. 排行榜即時監聽與更新 ---
-function initLeaderboard() {
-    // 監聽分數最高的 5 名 (依 score 排序)
-    database.ref('leaderboard').orderByChild('score').limitToLast(5).on('value', (snapshot) => {
-        let scores = [];
-        snapshot.forEach(child => scores.push(child.val()));
-        scores.reverse(); // 由高到低排列
-
-        const listEl = document.getElementById('scoreList');
-        if (!listEl) return;
-        
-        if (scores.length === 0) {
-            listEl.innerHTML = '<p class="text-gray-500 italic">目前尚無紀錄</p>';
-            return;
-        }
-
-        listEl.innerHTML = scores.map((s, i) => `
-            <div class="flex justify-between items-center py-1 border-b border-white/5 last:border-0">
-                <span class="text-blue-200">${i+1}. ${s.name} <span class="text-[10px] opacity-50">(${s.character})</span></span>
-                <span class="font-mono text-yellow-400 font-bold">${s.score}</span>
-            </div>
-        `).join('');
-    });
-}
-
-
+// 在 script 頂部（變數宣告區）加入這行
+let currentScoreKey = null;
 
     let items = [], particles = [], obstacles = [], snowballs = [];
     let powerUpTimer = 0, stormMode = false, stormTimer = 0, friction = 0.12; 
@@ -327,9 +405,12 @@ function start() {
     resize(); 
     document.getElementById('uiStart').classList.add('hidden');
     document.getElementById('uiOver').classList.add('hidden');
-    document.getElementById('pauseBtn').classList.remove('hidden'); // 顯示暫停按鈕
+    document.getElementById('pauseBtn').classList.remove('hidden'); 
     
-    isPaused = false; // 重設狀態
+    // 移除詢問姓名的邏輯，改為遊戲結束後判斷
+    window.playerName = "匿名玩家"; 
+
+    isPaused = false;
     running = true; score = 0; lives = 5; comboCount = 0; speed = 7; 
     obstacles = []; items = []; particles = []; snowballs = [];
     px = tx = canvas.width / 2;
@@ -432,22 +513,32 @@ function start() {
                 ctx.restore();
             }
 
-            // 碰撞偵測 (半徑 50)
+// 碰撞偵測 (統一半徑 50)
             if (Math.hypot(px - item.x, py - item.y) < 50) { 
                 if (item.type === '❤️') {
                     if (lives < MAX_LIVES) lives++; 
-                    updateScore(5); heartTimer = 40;
+                    heartTimer = 40; // 跳出 +❤️
                 } else if (item.type === '⭐') {
-                    powerUpTimer = 180; updateScore(20);
-                } else if (item.type === 'FOOD') {
-                    score += 30; // 直接加死，不乘 multiplier
-    heartTimer = 30; 
+                    powerUpTimer = 180; // 進入無敵，不加分
+} else if (item.type === 'FOOD') {
+                    score += 30; 
+                    heartTimer = 40; // 觸發頭頂飄字
+                    
+                    // --- 💡 右上角跳動特效 ---
+                    const scoreEl = document.getElementById('liveScore');
+                    if (scoreEl) {
+                        scoreEl.textContent = score;
+                        scoreEl.classList.remove('score-active'); // 先移除舊的
+                        void scoreEl.offsetWidth; // 💡 關鍵：強制重新渲染
+                        scoreEl.classList.add('score-active'); // 重新加入動畫
+                    }
                 }
-                items.splice(i, 1); 
-            } else if (item.y < -150) { 
-                items.splice(i, 1); 
+// 💡 關鍵：吃到東西後「必須」立刻從陣列移除，否則下一幀會再加一次分！
+                    items.splice(i, 1); 
+                } else if (item.y < -150) { 
+                    items.splice(i, 1); // 飛出畫面也要移除
+                }
             }
-        }
 
         // 3. 障礙物
         if(frame % Math.max(15, 40 - Math.floor(speed * 0.7)) === 0) {
@@ -651,9 +742,33 @@ x: px + (side * spread) + (Math.random() - 0.5) * 5, // 錯開中心點
         ctx.save();
         let breath = Math.sin(frame * 0.15) * 2; ctx.translate(0, breath); ctx.rotate(tilt * 0.5); 
         if (bodyImg && bodyImg.complete) {
-            if (heartTimer > 20) { 
-                ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.translate(px, py); ctx.fillStyle = "#ff4d4d"; ctx.font = `bold ${Math.floor(drawW * 0.4)}px Inter`;
-                ctx.shadowColor = "white"; ctx.shadowBlur = 5; ctx.textAlign = 'center'; ctx.fillText("＋❤️", 0, -drawH - -20 - (40 - heartTimer)); ctx.restore();
+// --- 💡 玩家頭頂噴出的文字特效 ---
+            if (heartTimer > 0) { 
+                ctx.save(); 
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // 使用絕對座標
+                ctx.translate(px, py); 
+                
+                // 設定文字樣式：粗黑體 (加重筆畫)
+                ctx.font = `900 ${Math.floor(drawW * 0.5)}px "Inter", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = "white";
+
+                // 根據狀態決定文字內容與顏色
+                let floatText = "";
+                if (score % 30 === 0 && score > 0 && heartTimer > 10) {
+                    floatText = "+30";
+                    ctx.fillStyle = "#FFD700"; // 美食金黃色
+                } else if (lives > 0) {
+                    floatText = "+❤️"; // 愛心只顯示圖示，簡單明瞭
+                    ctx.fillStyle = "#ff4d4d";
+                }
+                
+                // 動態飄浮：隨著時間往上移並淡出
+                let yOffset = -drawH - -10 - (40 - heartTimer) * 1.5;
+                ctx.globalAlpha = heartTimer / 40; // 漸漸消失
+                ctx.fillText(floatText, 0, yOffset); 
+                ctx.restore();
             }
 if (powerUpTimer > 0) { 
                 // 1. 設定閃爍濾鏡：每 2 幀切換一次「高亮金」與「原色」
@@ -827,59 +942,35 @@ function togglePause() {
 }
 
 
+// 新增：切換到排行榜頁面的函數
+function showLeaderboardPage() {
+    document.getElementById('gameOverResult').classList.add('hidden');
+    document.getElementById('gameOverLeaderboard').classList.remove('hidden');
+}
 
-function triggerGameOver() {
+
+
+async function triggerGameOver() {
     running = false;
     document.getElementById('pauseBtn').classList.add('hidden');
     
-    const playerName = CHARS[selectedIdx].name;
-    const currentScore = score;
-    
-    // 1. 上傳分數
-    uploadScore(playerName, currentScore, playerName);
+    // 💡 關鍵：每次結束時，重置回第一頁顯示
+    document.getElementById('gameOverResult').classList.remove('hidden');
+    document.getElementById('gameOverLeaderboard').classList.add('hidden');
+    let medal = "❄️", title = "【再接再厲】", colorClass = "text-gray-400";
+    let nextMsg = "";
 
-    // 2. 獲取前 30 名並渲染排行榜
-    database.ref('leaderboard').orderByChild('score').limitToLast(30).once('value', (snapshot) => {
-        let scores = [];
-        snapshot.forEach(child => {
-            scores.push({ ...child.val(), id: child.key });
-        });
-        scores.reverse(); // 高分在前
-
-        const endListEl = document.getElementById('endGameList');
-        if (endListEl) {
-            let foundPlayer = false;
-            endListEl.innerHTML = scores.map((s, i) => {
-                const isCurrentRun = (s.score === currentScore && s.name === playerName && !foundPlayer);
-                if (isCurrentRun) foundPlayer = true; // 標記已找到當次分數，避免同分誤標
-
-                return `
-                    <div class="flex justify-between items-center py-1 px-2 rounded ${isCurrentRun ? 'bg-blue-500/40 border border-blue-400 animate-pulse' : ''}">
-                        <span class="${isCurrentRun ? 'font-bold text-white' : 'text-blue-100'}">
-                            ${i + 1}. ${s.name} ${isCurrentRun ? '🚩 (你)' : ''}
-                        </span>
-                        <span class="font-mono ${isCurrentRun ? 'text-white' : 'text-yellow-400'}">${s.score}</span>
-                    </div>
-                `;
-            }).join('');
-        }
-    });
-    let medal = "❄️", title = "再接再厲", colorClass = "text-gray-400";
-    let nextMsg = ""; // 存儲下一階提示
-
-    // 定義門檻與資訊
-    const tiers = [
-        { score: 2500, medal: "👑", title: "冰城至尊", color: "text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white font-black italic" },
-        { score: 1700, medal: "💎", title: "哈爾濱鑽石", color: "text-cyan-300 drop-shadow-[0_0_10px_rgba(103,232,249,0.8)]" },
-        { score: 1300, medal: "🥇", title: "哈爾濱傳說", color: "text-yellow-400" },
-        { score: 900, medal: "🥈", title: "專業滑雪手", color: "text-gray-200" },
-        { score: 600, medal: "🥉", title: "亞布力勇士", color: "text-orange-400" },
-        { score: 400, medal: "🥽", title: "滑雪道挑戰中", color: "text-yellow-200" },
-        { score: 200, medal: "🍬", title: "滑雪初體驗", color: "text-green-300" }
+const tiers = [
+        { score: 2500, medal: "👑", title: "【冰城至尊】", color: "text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white font-black italic" },
+        { score: 1700, medal: "💎", title: "【哈爾濱鑽石】", color: "text-cyan-300 drop-shadow-[0_0_10px_rgba(103,232,249,0.8)]" },
+        { score: 1300, medal: "🥇", title: "【哈爾濱傳說】", color: "text-yellow-400" },
+        { score: 900, medal: "🥈", title: "【專業滑雪手】", color: "text-gray-200" },
+        { score: 600, medal: "🥉", title: "【亞布力勇士】", color: "text-orange-400" },
+        { score: 400, medal: "🥽", title: "【滑雪道挑戰中】", color: "text-yellow-200" },
+        { score: 200, medal: "🍬", title: "【滑雪初體驗】", color: "text-green-300" }
     ];
 
-    // 判定當前等級
-    let currentTierIdx = -1;
+let currentTierIdx = -1;
     for (let i = 0; i < tiers.length; i++) {
         if (score >= tiers[i].score) {
             currentTierIdx = i;
@@ -890,8 +981,7 @@ function triggerGameOver() {
         }
     }
 
-    // 計算「下一階」提示
-    if (currentTierIdx === 0) {
+if (currentTierIdx === 0) {
         nextMsg = "🎉 已達到最高榮譽！";
     } else {
         let nextTier = tiers[currentTierIdx === -1 ? tiers.length - 1 : currentTierIdx - 1];
@@ -899,36 +989,234 @@ function triggerGameOver() {
         nextMsg = `離下一階【${nextTier.title}】還差 <span class="text-yellow-300 font-bold">${diff}</span> 分`;
     }
 
-    // 更新 UI
+
+// 排行榜預讀取與上傳邏輯
+    try {
+        const savedName = localStorage.getItem('skiPlayerName');
+        const selectedCharName = CHARS[selectedIdx].name;
+        const finalPlayerName = savedName || selectedCharName || "匿名玩家";
+        window.playerName = finalPlayerName;
+
+        // 靜默上傳並取得 Key
+        currentScoreKey = await uploadScore(finalPlayerName, score);
+        
+        // 預先抓取榜單（這樣點擊切換時就不用等）
+        const rawList = await fetchLeaderboard();
+        const { list, myRank } = injectMyScore(rawList, finalPlayerName, score);
+        renderLeaderboard(list, myRank);
+
+    } catch (err) {
+        console.error("Leaderboard Error:", err);
+    }
+
+
+
+
+
+// --- 以下為原本的 UI 渲染邏輯，保持不變 ---
     document.getElementById('uiOver').classList.remove('hidden');
     document.getElementById('medalIcon').textContent = medal;
     document.getElementById('medalTitle').textContent = title;
     document.getElementById('medalTitle').className = `text-3xl font-bold mb-2 ${colorClass} drop-shadow-md`;
     
-    // 插入下一階提示訊息 (假設我們在 finalScore 下面放一個 div)
-    const scoreContainer = document.getElementById('finalScore').parentElement;
-    let nextTierEl = document.getElementById('nextTierTier');
-    if (!nextTierEl) {
-        nextTierEl = document.createElement('p');
-        nextTierEl.id = 'nextTierTier';
-        nextTierEl.className = 'text-sm text-blue-200 mt-2 opacity-80 italic';
-        scoreContainer.parentNode.insertBefore(nextTierEl, scoreContainer.nextSibling);
-    }
-    nextTierEl.innerHTML = nextMsg;
-    
-    // 分數紀錄邏輯
-    let highScore = localStorage.getItem('skiHighScore') || 0;
-    if (score > highScore) {
-        localStorage.setItem('skiHighScore', score);
-        document.getElementById('finalScore').innerHTML = `${score} <span class="text-yellow-300 text-sm ml-2">New Record!</span>`;
-    } else {
-        document.getElementById('finalScore').innerHTML = `${score} <br><span class="text-sm text-gray-400">歷史最高: ${highScore}</span>`;
-    }
-   // 在 triggerGameOver 的最後
-uploadScore(CHARS[selectedIdx].name, score, CHARS[selectedIdx].name); 
+// 取得得分容器
+const scoreContainer = document.getElementById('finalScore').parentElement;
+
+// 處理「離下一階還差幾分」的顯示
+let nextTierEl = document.getElementById('nextTierTier');
+if (!nextTierEl) {
+    nextTierEl = document.createElement('p');
+    nextTierEl.id = 'nextTierTier';
+    nextTierEl.className = 'text-sm text-blue-200 mt-2 opacity-80 italic';
+    scoreContainer.parentNode.insertBefore(nextTierEl, scoreContainer.nextSibling);
 }
+nextTierEl.innerHTML = nextMsg;
+
+// 處理分數與破紀錄邏輯
+let highScore = localStorage.getItem('skiHighScore') || 0;
+
+// 定義橘紅色跳動的 HTML 模板
+const scoreHTML = `
+    <div class="score-highlight-group">
+        <span class="score-label">最終得分:</span>
+        <span class="score-number">${score}</span>
+    </div>
+`;
+
+if (score > highScore) {
+    localStorage.setItem('skiHighScore', score);
+    scoreContainer.innerHTML = scoreHTML + `<div class="text-yellow-300 text-sm mt-1">New Record!</div>`;
+} else {
+    scoreContainer.innerHTML = scoreHTML + `<div class="text-gray-400 text-sm mt-1">歷史最高: ${highScore}</div>`;
+}
+
+
+}
+
+
     window.onresize = resize; resize(); initCharSelect();
-    initLeaderboard();
+
+const LEADERBOARD_LIMIT = 20;
+
+
+
+function renderLeaderboard(list, myRank) {
+    const listContainer = document.getElementById('leaderboardList');
+    const stickyContainer = document.getElementById('personalRankSticky');
+    if (!listContainer || !stickyContainer) return;
+
+    // 1. 渲染清單 (保持你原本的代碼)
+    listContainer.innerHTML = list.map((item, index) => {
+        const isMe = item.isMe ? "bg-blue-500/40 border border-blue-400" : "border-b border-white/5";
+        const rankColor = index === 0 ? "text-yellow-400" : (index === 1 ? "text-gray-300" : (index === 2 ? "text-orange-400" : "text-white"));
+        const nameDisplay = item.name === "路人" ? `<span class="opacity-40 text-xs italic">路人</span>` : item.name;
+        return `
+            <div class="flex justify-between items-center py-2 px-3 ${isMe} rounded-lg mb-1">
+                <span class="${rankColor} font-bold text-sm">#${index + 1} ${nameDisplay}</span>
+                <span class="font-mono text-sm ${item.name === "路人" ? "opacity-30" : ""}">${item.score}</span>
+            </div>
+        `;
+    }).join('');
+
+    // 2. 處理置底固定顯示
+    const myName = window.playerName || "匿名玩家";
+    stickyContainer.classList.remove('hidden');
+    
+    // 檢查 localStorage 確保如果這場已經改過名了，渲染出來的按鈕直接就是禁用的
+    // 但因為一場遊戲只能改一次，我們可以定義一個臨時變數或直接檢查按鈕文字
+    stickyContainer.innerHTML = `
+        <div class="flex items-center gap-2">
+            <span class="text-white font-bold text-sm">#${myRank} ${myName}</span>
+            <button onclick="renameFlow()" class="btn-rename">改名</button>
+        </div>
+        <span class="font-mono text-white font-bold">${score}</span>
+    `;
+}
+
+// 獨立的取名流程
+async function renameFlow() {
+    const btn = document.querySelector('.btn-rename');
+    if (btn && btn.disabled) return;
+
+    const newName = prompt("請輸入你的滑雪大名：", localStorage.getItem('skiPlayerName') || "");
+    
+    if (newName && newName.trim() !== "") {
+        if (btn) {
+            btn.innerText = "傳送中...";
+            btn.disabled = true; 
+            btn.style.opacity = "0.7";
+        }
+
+        window.playerName = newName;
+        localStorage.setItem('skiPlayerName', newName);
+        
+        try {
+            // 💡 關鍵修正：傳入 currentScoreKey，Firebase 就會更新舊資料而非新增
+            await uploadScore(newName, score, currentScoreKey);
+            
+            const rawList = await fetchLeaderboard();
+            const { list, myRank } = injectMyScore(rawList, newName, score);
+            renderLeaderboard(list, myRank);
+
+            // 鎖定按鈕狀態
+            const successBtn = document.querySelector('.btn-rename');
+            if (successBtn) {
+                successBtn.innerText = "✅ 改名成功";
+                successBtn.style.background = "#22c55e"; 
+                successBtn.style.color = "white";
+                successBtn.style.opacity = "1";
+                successBtn.disabled = true; 
+                successBtn.onclick = null; 
+            }
+        } catch (e) {
+            console.error(e);
+            if (btn) {
+                btn.innerText = "重試";
+                btn.disabled = false;
+                btn.style.opacity = "1";
+            }
+        }
+    }
+}
+
+
+
+
+
+
+function injectMyScore(list, myName, myScore) {
+    // 遍歷清單，只有名字、分數且 Key(ts) 都吻合才標記為 isMe
+    const displayList = list.map(item => ({
+        ...item,
+        isMe: item.name === myName && item.score === myScore
+    }));
+
+    // 取得當前玩家在清單中的索引
+    const myRank = list.findIndex(s => s.name === myName && s.score === myScore) + 1;
+    return { list: displayList, myRank: myRank || 999 };
+}
+
+
+
+
+
+function fetchLeaderboard() {
+    return database
+        .ref('leaderboard')
+        .once('value')
+        .then(snapshot => {
+            let list = [];
+            snapshot.forEach(snap => {
+                const data = snap.val();
+                if (data && data.score !== undefined) {
+                    list.push(data);
+                }
+            });
+
+            // 1. 先排序真實玩家
+            list.sort((a, b) => b.score - a.score);
+
+            // 2. 如果人數不足，用 NPC 補齊到 LEADERBOARD_LIMIT
+            if (list.length < LEADERBOARD_LIMIT) {
+                const npcCount = LEADERBOARD_LIMIT - list.length;
+                for (let i = 0; i < npcCount; i++) {
+                    list.push({
+                        name: "路人",
+                        // 讓路人的分數稍微真實一點，介於 50 到 300 之間
+                        score: Math.floor(Math.random() * 250) + 50,
+                        ts: Date.now(),
+                        isNPC: true
+                    });
+                }
+            }
+
+            // 3. 補完 NPC 後重新排序一次
+            return list.sort((a, b) => b.score - a.score).slice(0, LEADERBOARD_LIMIT);
+        });
+}
+
+
+// 修改後的上傳函數
+function uploadScore(name, score, existingKey = null) {
+    if (existingKey) {
+        // 如果有舊的 Key，就更新該筆資料
+        return database.ref('leaderboard/' + existingKey).set({
+            name,
+            score,
+            ts: Date.now()
+        }).then(() => existingKey); // 返回同一個 Key
+    } else {
+        // 如果沒有 Key，就產生新的一筆
+        const newRef = database.ref('leaderboard').push();
+        return newRef.set({
+            name,
+            score,
+            ts: Date.now()
+        }).then(() => newRef.key); // 返回新產生的 Key
+    }
+}
+
+
 </script>
 </body>
 </html>
