@@ -89,6 +89,21 @@
     display: flex; /* 讓內容置中 */
     justify-content: center; 
 }
+
+
+/* 遊戲色調濾鏡層 */
+#colorFilter {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    /* 增加 transition 時間到 3 秒，會更有電影感 */
+    transition: background-color 3s ease, backdrop-filter 3s ease; 
+}
+
+
+
+
 /* 2. 限制雪地背景的寬度，使其與 Canvas 一致 */
 .snow-bg {
     position: fixed; 
@@ -272,7 +287,7 @@
     </div>
 </div>
 
-
+<div id="colorFilter"></div>
     <canvas id="gameCanvas"></canvas>
 
 
@@ -305,6 +320,7 @@ localStorage.setItem('skiPlayerName', window.playerName);
 // 在 script 頂部（變數宣告區）加入這行
 let currentScoreKey = null;
 
+    let jumpOffset = 0, jumpV = 0, isJumping = false;
     let items = [], particles = [], obstacles = [], snowballs = [];
     let powerUpTimer = 0, stormMode = false, stormTimer = 0, friction = 0.12; 
     let selectedIdx = 4, running = false, score = 0, frame = 0, speed = 7, px, py = 150, tx;
@@ -312,6 +328,7 @@ let currentScoreKey = null;
     const MAX_LIVES = 5;
     let highScore = localStorage.getItem('skiHighScore') || 0;
     let isPaused = false; // 新增這行
+    let snowHitTimer = 0; // 新增：雪堆撞擊表情計時器
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -335,10 +352,17 @@ const foodImages = {}; // 用來存放預載入的圖片
     const FACES = ['n', 's', 'h', 'e', 'd', 'b']; 
     const OBSTACLE_FILES = ['1.webp', '2.webp', '3.webp'];
     const charImages = {}, obsImages = {};
-    const OBSTACLE_CONFIG = { '1.webp': { w: 70, h: 60, r: 35 }, '2.webp': { w: 50, h: 50, r: 35 }, '3.webp': { w: 70, h: 90, r: 35 } };
+    const OBSTACLE_CONFIG = { 
+        '1.webp': { w: 70, h: 60, r: 35 }, 
+        '2.webp': { w: 50, h: 50, r: 35 }, 
+        '3.webp': { w: 70, h: 90, r: 35 },
+        'ramp.webp': { w: 110, h: 110, r: 40 }, // 新增：讓跳台寬一點，好踩！
+        'snow_pile.webp': { w: 100, h: 100, r: 30 } // 💡 新增雪堆配置
+    };
 
-    function preloadAssets() {
-        CHARS.forEach(c => {
+function preloadAssets() {
+        // --- 角色圖片 ---
+        CHARS.forEach(c => {       
             const mainImg = new Image(); mainImg.src = `images/ski/${c.file}.webp`;
             charImages[c.file] = mainImg;
             FACES.forEach(f => {
@@ -346,15 +370,23 @@ const foodImages = {}; // 用來存放預載入的圖片
                 charImages[`${c.file}_${f}`] = img;
             });
         });
-        OBSTACLE_FILES.forEach(file => {
-            const img = new Image(); img.src = `images/obs/${file}`;
+
+        // --- 障礙物與跳台圖片 ---
+        // 把 ramp.webp 跟普通障礙物放在一起處理
+        const allObsFiles = [...OBSTACLE_FILES, 'ramp.webp', 'snow_pile.webp'];
+        
+        allObsFiles.forEach(file => {
+            const img = new Image(); 
+            img.src = `images/obs/${file}`; // 統一從 images/obs/ 讀取
             obsImages[file] = img;
         });
+
+        // --- 食物圖片 ---
         FOOD_FILES.forEach(file => {
-    const img = new Image();
-    img.src = `images/food/${file}`;
-    foodImages[file] = img;
-});
+            const img = new Image();
+            img.src = `images/food/${file}`;
+            foodImages[file] = img;
+        });
     }
     preloadAssets();
 
@@ -428,8 +460,23 @@ function start() {
     window.addEventListener('touchstart', move, { passive: false });
 
     function loop() {
+        // --- 跳躍物理邏輯 ---
+if (isJumping) {
+    jumpOffset += jumpV;
+    jumpV -= 0.6; // 重力加速，數值越大跳得越快，落地越重
+    if (jumpOffset <= 0) {
+        jumpOffset = 0;
+        jumpV = 0;
+        isJumping = false;
+        // 落地瞬間可以加一點粒子特效，更有力道
+        for(let i=0; i<8; i++) addParticle(px, py + 25, (Math.random()-0.5)*10, Math.random()*5);
+    }
+}
         if(!running || isPaused) return; // 修改這行，加入 isPaused 判定
         frame++; 
+
+
+
 
         if (powerUpTimer > 0) { powerUpTimer--; friction = 0.15; }
         else if (stormMode) { speed += 0.03; friction = 0.06; }
@@ -437,6 +484,8 @@ function start() {
         
         px += (tx - px) * friction; 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
 
         stormTimer++;
         if (stormTimer % 1200 === 0) stormMode = true; 
@@ -540,24 +589,124 @@ function start() {
                 }
             }
 
-        // 3. 障礙物
-        if(frame % Math.max(15, 40 - Math.floor(speed * 0.7)) === 0) {
-            const file = OBSTACLE_FILES[Math.floor(Math.random() * OBSTACLE_FILES.length)];
-            obstacles.push({ x: Math.random() * (canvas.width - 80) + 40, y: canvas.height + 100, file: file });
+
+// --- 3. 障礙物、雪堆與跳台生成 ---
+let spawnRate = Math.max(15, 40 - Math.floor(speed * 0.7));
+if (frame % spawnRate === 0) {
+    let rand = Math.random();
+    let x = Math.random() * (canvas.width - 80) + 40;
+    let y = canvas.height + 100;
+
+    // 優先判定：跳台生成 (150分以後，機率 15%)
+    if (score >= 150 && !stormMode && rand <= 0.15) {
+        obstacles.push({ 
+            x: x, y: y, 
+            file: 'ramp.webp', 
+            type: 'ramp' 
+        });
+
+        // 40% 機率在跳台上方生成空中星星
+        if (Math.random() < 0.4) {
+            items.push({
+                x: x, y: y - 70, 
+                type: '⭐',
+                isHigh: true   
+            });
         }
+    } 
+    // 次要判定：雪堆生成 (100分以後，機率 20%)
+    else if (score >= 40 && rand <= 0.35) { // 這裡 0.35 是累加機率 (0.15~0.35 區間)
+        obstacles.push({ 
+            x: x, y: y, 
+            file: 'snow_pile.webp', 
+            type: 'obstacle' 
+        });
+    } 
+    // 基本判定：普通障礙物 (任何分數，剩下的機率)
+    else {
+        const file = OBSTACLE_FILES[Math.floor(Math.random() * OBSTACLE_FILES.length)];
+        obstacles.push({ 
+            x: x, y: y, 
+            file: file,
+            type: 'obstacle' 
+        });
+    }
+}
+
+        // --- 處理所有物件的移動與碰撞 ---
         for (let i = obstacles.length - 1; i >= 0; i--) {
-            let o = obstacles[i]; o.y -= speed;
-            const config = OBSTACLE_CONFIG[o.file] || { w: 60, h: 60, r: 35 };
+            let o = obstacles[i]; 
+            o.y -= speed;
+
+            const config = (o.type === 'ramp') ? { w: 70, h: 70, r: 30 } : (OBSTACLE_CONFIG[o.file] || { w: 60, h: 60, r: 35 });
             const img = obsImages[o.file];
+
             ctx.save();
-            if (powerUpTimer > 0 && Math.hypot(px - o.x, py - o.y) < config.r + 20) ctx.globalAlpha = 0.3;
-            if (img && img.complete) ctx.drawImage(img, o.x - config.w / 2, o.y - config.h / 2, config.w, config.h);
+            
+            if (o.type === 'ramp' && (!img || !img.complete)) {
+                // 測試用：還沒換圖前畫一個藍色跳台色塊
+                ctx.fillStyle = '#3498db';
+                ctx.fillRect(o.x - config.w/2, o.y - config.h/2, config.w, config.h);
+            } else if (img && img.complete) {
+                if (powerUpTimer > 0 && o.type !== 'ramp' && Math.hypot(px - o.x, py - o.y) < config.r + 20) ctx.globalAlpha = 0.3;
+                ctx.drawImage(img, o.x - config.w / 2, o.y - config.h / 2, config.w, config.h);
+            }
             ctx.restore();
-            if (powerUpTimer <= 0 && invincibilityTimer <= 0 && Math.hypot(px - o.x, py - o.y) < config.r + 5) {
-                lives--; comboCount = 0; obstacles.splice(i, 1); invincibilityTimer = 60;
-                if (lives <= 0) triggerGameOver(); 
-            } else if(o.y < -150) { obstacles.splice(i, 1); updateScore(1); if(score % 5 === 0 && speed < 18) speed += 0.2;} // 限制最高速度為 18}
+
+            // 碰撞判定
+            const dist = Math.hypot(px - o.x, py - o.y);
+            if (dist < config.r + 5) {
+                if (o.type === 'ramp') {
+                    if (!isJumping) {
+                        isJumping = true;
+                        jumpV = 12; // 跳躍力度
+                        updateScore(50);
+                        obstacles.splice(i, 1);
+                    }
+} else if (o.file === 'snow_pile.webp') { 
+    // 【雪堆碎裂邏輯】
+    // 💡 關鍵：只有在「非無敵狀態」下才會斷 Combo
+    if (powerUpTimer <= 0) {
+        comboCount = 0; 
+        snowHitTimer = 20; // 顯示受驚表情
+    }
+    
+    // 無論有無無敵，雪堆都會消失並噴發粒子（這樣才帥！）
+    obstacles.splice(i, 1);
+            // 生成白色粒子噴發
+            for(let j=0; j < 25; j++) {
+                particles.push({
+        x: o.x,
+        y: o.y,
+        // 加大爆發初速
+        vx: (Math.random() - 0.5) * 18, 
+        vy: (Math.random() - 0.8) * 15, // 讓大部分粒子先向上噴再掉下來
+        life: 30 + Math.random() * 20,
+        alpha: 1,
+        size: 3 + Math.random() * 5,    // 讓粒子大小不一，更有碎塊感
+        isTrack: false,
+        isSnowBurst: true,              // 新增標記，用來套用物理邏輯
+        gravity: 0.5                    // 給予重力常數
+    });
+
+            }
+                } else if (powerUpTimer <= 0 && invincibilityTimer <= 0 && !isJumping) {
+                    lives--; 
+                    comboCount = 0; 
+                    obstacles.splice(i, 1); 
+                    invincibilityTimer = 60;
+                    if (lives <= 0) triggerGameOver(); 
+                }
+            } else if (o.y < -150) { 
+                obstacles.splice(i, 1); 
+                if (o.type !== 'ramp') updateScore(1); 
+            }
         }
+
+
+
+
+
 
 // --- 4. 雪球提示與生成邏輯 ---
         if (score >= 300) {
@@ -713,7 +862,34 @@ x: px + (side * spread) + (Math.random() - 0.5) * 5, // 錯開中心點
         ctx.save(); 
         if (invincibilityTimer > 0) { invincibilityTimer--; if (frame % 6 < 3) ctx.globalAlpha = 0.2; }
         if (stormMode) ctx.translate((Math.random()-0.5)*5, (Math.random()-0.5)*5);
-        ctx.translate(px, py);
+       
+
+// --- 💡 第一步：先畫地面的「動態陰影」 ---
+        // 陰影要畫在 translate(px, py) 之前，或是使用相對座標
+        ctx.save();
+        ctx.translate(px, py + 0); // 陰影位於角色腳底位置
+        ctx.fillStyle = "rgba(0, 0, 0, 0.2)"; // 淡淡的黑色
+        
+        // 陰影隨高度縮小：跳得越高，陰影越小、越淡
+        let shadowScale = Math.max(0.4, 1 - (jumpOffset / 500)); 
+        ctx.globalAlpha = shadowScale * 0.3; // 越高越透明
+        ctx.beginPath();
+        // 畫一個橢圓作為陰影
+        ctx.ellipse(0, 0, 25 * shadowScale, 8 * shadowScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+       
+// --- 💡 關鍵修正：將高度偏移套用在畫筆上 ---
+        ctx.translate(px, py - jumpOffset);
+
+// 如果在跳躍中，增加縮放效果
+        if (isJumping) {
+            let s = 1 + (jumpOffset / 400); // 隨高度稍微放大 1.0~1.3 倍
+            ctx.scale(s, s);
+        }
+
+
         let tilt = Math.max(-0.2, Math.min(0.2, (tx - px) * 0.05));
         let tipSwing = tilt * 30;
         
@@ -728,9 +904,11 @@ x: px + (side * spread) + (Math.random() - 0.5) * 5, // 錯開中心點
 
         // 表情判定
         if (heartTimer > 0) heartTimer--;
+        if (snowHitTimer > 0) snowHitTimer--; // 💡 每幀倒數
         let faceSuffix = "n";
         if (!running || invincibilityTimer > 0) faceSuffix = "d"; 
         else if (powerUpTimer > 0) faceSuffix = "e"; 
+        else if (snowHitTimer > 0) faceSuffix = "s"; // 💡 關鍵：撞到雪堆時顯示 's' 表情
         else if (heartTimer > 0) faceSuffix = "b"; 
         else if (stormMode) faceSuffix = "s"; 
         else if (score > 0 && score % 15 <= 3) faceSuffix = "h";
@@ -872,10 +1050,15 @@ if (comboCount >= 3) {
     function updateParticlesLogic() {
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
+// --- 💡 處理雪堆碎裂的特殊重力邏輯 ---
+        if (p.isSnowBurst) {
+            p.vy += p.gravity; // 速度不斷向下增加（重力）
+            p.y -= speed * 0.5; // 讓碎塊跟著背景往後退一點點
+        }
 
-        if (p.isTrack) {
+
+// --- 原本的邏輯 ---
+        else if (p.isTrack) {
             p.y -= speed ; // 痕跡緊貼地面移動
             p.alpha = (p.life / 35) * 0.3;
         } else if (!p.isStorm) {
@@ -883,6 +1066,8 @@ if (comboCount >= 3) {
             p.alpha = (p.life / 25);
         }
         
+p.x += p.vx;
+        p.y += p.vy;
         p.life--;
         if (p.life <= 0) particles.splice(i, 1);
     }
@@ -912,12 +1097,14 @@ function drawParticlesRelative() {
                 ctx.moveTo(p.x, p.y);
                 ctx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8);
                 ctx.stroke();
-            } else {
-                // 滑行雪花粒子：因為我們現在用絕對矩陣，要確保生成時就給它正確的 x, y
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-                ctx.fill();
-            }
+} else {
+    // 滑行雪花粒子或碎裂碎塊
+    ctx.beginPath();
+    // 💡 使用 p.size 或預設值 2
+    let radius = p.isSnowBurst ? (p.size * 0.6) : 1.5;
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+}
         }
         ctx.restore();
     });
