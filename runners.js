@@ -1,8 +1,8 @@
-/* runners.js - 跑步小人與雪地底座整合系統 */
-
+/* runners.js - 滑雪遊戲相容版 */
 (function() {
-    // 1. 自動注入 CSS 樣式
+    // 1. 自動注入 CSS 樣式 (代碼保持不變)
     const style = document.createElement('style');
+    style.id = 'runners-style';
     style.innerHTML = `
 /* 總容器 */
         .footer-game-zone-wrap {
@@ -102,8 +102,21 @@
     `;
     document.head.appendChild(style);
 
-    // 2. 生成 HTML 結構
+    // 💡 2. 定義全域控制函式，供滑雪遊戲主程式呼叫
+    window.startRunners = function() {
+        const wrap = document.querySelector('.footer-game-zone-wrap');
+        if (wrap) wrap.style.display = 'flex';
+    };
+
+    window.stopRunners = function() {
+        const wrap = document.querySelector('.footer-game-zone-wrap');
+        if (wrap) wrap.style.display = 'none';
+    };
+
+    // 3. 生成結構
     function initRunners() {
+        if (document.querySelector('.footer-game-zone-wrap')) return;
+
         const wrap = document.createElement('div');
         wrap.className = 'footer-game-zone-wrap';
         wrap.innerHTML = `
@@ -111,19 +124,21 @@
             <div class="runner-track">
                 <div class="runner"></div>
             </div>
+            <div class="snowman-btn left" onclick="attack('left')">
+                <img src="images/runners/snowman02.webp" alt="左雪人" style="width: 100%; height: auto;">
             </div>
-        <div class="snow-base-layer"></div>
-        <div class="snowman-btn left" onclick="attack('left')">
-            <img src="images/runners/snowman02.webp" alt="左雪人" style="width: 100%; height: auto;">
-        </div>
-        <div class="snowman-btn right" onclick="attack('right')">
-            <img src="images/runners/snowman01.webp" alt="右雪人" style="width: 100%; height: auto;">
-        </div>
+            <div class="snowman-btn right" onclick="attack('right')">
+                <img src="images/runners/snowman01.webp" alt="右雪人" style="width: 100%; height: auto;">
+            </div>
         `;
         document.body.appendChild(wrap);
+
+        // --- 💡 關鍵：判斷是否為滑雪遊戲頁面，如果是，初始先隱藏 ---
+        if (document.getElementById('gameCanvas')) {
+            window.stopRunners();
+        }
     }
 
-    // 3. 確保在頁面載入後執行
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initRunners);
     } else {

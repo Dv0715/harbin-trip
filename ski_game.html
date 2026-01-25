@@ -266,6 +266,8 @@
             </div>
             <div id="personalRankSticky"></div>
         </div>
+        <div id="runnersContainer" style="width: 100%; height: 60px; overflow: hidden; position: relative; pointer-events: none;">
+        </div>
         <button onclick="location.reload()" class="btn-action bg-red-600 px-12 mt-6">重新挑戰</button>
     </div>
 
@@ -319,6 +321,7 @@ localStorage.setItem('skiPlayerName', window.playerName);
 
 // 在 script 頂部（變數宣告區）加入這行
 let currentScoreKey = null;
+let lastIceFrame = 0; // 💡 新增：紀錄上次生成冰面的時間
 
     let jumpOffset = 0, jumpV = 0, isJumping = false;
     let items = [], particles = [], obstacles = [], snowballs = [];
@@ -329,6 +332,7 @@ let currentScoreKey = null;
     let highScore = localStorage.getItem('skiHighScore') || 0;
     let isPaused = false; // 新增這行
     let snowHitTimer = 0; // 新增：雪堆撞擊表情計時器
+    let floatType = ""; // 💡 floatType 用來記錄現在要飄 "+30" 還是 "+❤️"
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -357,8 +361,20 @@ const foodImages = {}; // 用來存放預載入的圖片
         '2.webp': { w: 50, h: 50, r: 35 }, 
         '3.webp': { w: 70, h: 90, r: 35 },
         'ramp.webp': { w: 110, h: 110, r: 40 }, // 新增：讓跳台寬一點，好踩！
-        'snow_pile.webp': { w: 100, h: 100, r: 30 } // 💡 新增雪堆配置
+        'snow_pile.webp': { w: 100, h: 100, r: 30 }, // 💡 新增雪堆配置
+        'ice.webp': { w: 100, h: 100, r: 60 } // 冰面通常大一點，比較好踩
     };
+
+
+// 音效控制函數
+function playSound(file) {
+    const sound = new Audio(`audio/${file}`);
+    sound.volume = 0.5; // 音量設為 50%
+    sound.play().catch(() => {}); // 避免瀏覽器政策導致報錯
+}
+
+
+
 
 function preloadAssets() {
         // --- 角色圖片 ---
@@ -373,7 +389,7 @@ function preloadAssets() {
 
         // --- 障礙物與跳台圖片 ---
         // 把 ramp.webp 跟普通障礙物放在一起處理
-        const allObsFiles = [...OBSTACLE_FILES, 'ramp.webp', 'snow_pile.webp'];
+        const allObsFiles = [...OBSTACLE_FILES, 'ramp.webp', 'snow_pile.webp', 'ice.webp'];
         
         allObsFiles.forEach(file => {
             const img = new Image(); 
@@ -447,7 +463,12 @@ function start() {
     obstacles = []; items = []; particles = []; snowballs = [];
     px = tx = canvas.width / 2;
     loop();
+
 }
+// 💡 停止跑步小人
+    if (typeof stopRunners === "function") {
+        stopRunners();
+    }
 
     const move = (e) => {
         if(!running) return;
@@ -461,6 +482,25 @@ function start() {
 
     function loop() {
         // --- 跳躍物理邏輯 ---
+ // --- 核心摩擦力邏輯修正 ---
+         if(!running || isPaused) return; // 修改這行，加入 isPaused 判定
+        frame++; 
+
+        if (powerUpTimer > 0) powerUpTimer--;
+
+let targetFriction = 0.12; // 預設摩擦力
+if (powerUpTimer > 0) targetFriction = 0.15;
+else if (stormMode) targetFriction = 0.06;
+
+// 💡 關鍵：檢查玩家是否正踩在冰面上
+let onIce = obstacles.some(o => o.type === 'ice' && Math.hypot(px - o.x, py - o.y) < 65);
+
+if (onIce) {
+    friction = 0.02; // 踩在冰面上，優先套用極低摩擦力
+} else {
+    friction = targetFriction; // 離開冰面後恢復正常
+}
+
 if (isJumping) {
     jumpOffset += jumpV;
     jumpV -= 0.6; // 重力加速，數值越大跳得越快，落地越重
@@ -472,17 +512,29 @@ if (isJumping) {
         for(let i=0; i<8; i++) addParticle(px, py + 25, (Math.random()-0.5)*10, Math.random()*5);
     }
 }
-        if(!running || isPaused) return; // 修改這行，加入 isPaused 判定
-        frame++; 
 
 
 
 
-        if (powerUpTimer > 0) { powerUpTimer--; friction = 0.15; }
-        else if (stormMode) { speed += 0.03; friction = 0.06; }
-        else { friction = 0.12; }
+
+// --- 🧊 偵測是否正在冰面上 ---
+        // 判定半徑稍微放大一點，讓體感更連貫
+
+
+        // --- 物理屬性處理 ---
+        if (onIce) {
+            friction = 0.02; // 極度滑溜
+            speed += 0.08;   // 持續微幅加速
+        } else if (powerUpTimer > 0) {
+            friction = 0.15; // 無敵時操控性較好
+        } else if (stormMode) {
+            speed += 0.03;
+            friction = 0.06;
+        } else {
+            friction = 0.12;
+        }
         
-        px += (tx - px) * friction; 
+        px += (tx - px) * friction;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 
@@ -491,14 +543,26 @@ if (isJumping) {
         if (stormTimer % 1200 === 0) stormMode = true; 
         if (stormMode && stormTimer % 1200 === 300) stormMode = false; 
 
-        // 1. 速度線
-        ctx.save();
-        ctx.strokeStyle = '#c5e2f7'; ctx.lineWidth = 2;
-        for(let i=0; i<6; i++) {
-            let ly = (frame * speed * 0.8 + i * 150) % (canvas.height + 150);
-            ctx.beginPath(); ctx.moveTo(i * canvas.width / 5, ly - 50); ctx.lineTo(i * canvas.width / 5, ly + 50); ctx.stroke();
-        }
-        ctx.restore();
+
+
+
+
+
+
+// 在繪製「1. 速度線」的部分
+ctx.save();
+// 💡 如果在冰面上，線條變白且變粗
+ctx.strokeStyle = onIce ? '#ffffff' : '#c5e2f7'; 
+ctx.lineWidth = onIce ? 4 : 2; 
+
+for(let i=0; i< (onIce ? 12 : 6); i++) { // 💡 冰面上線條數量翻倍
+    let ly = (frame * speed * (onIce ? 1.5 : 0.8) + i * 150) % (canvas.height + 150);
+    ctx.beginPath(); 
+    ctx.moveTo(i * canvas.width / (onIce ? 10 : 5), ly - 50); 
+    ctx.lineTo(i * canvas.width / (onIce ? 10 : 5), ly + 50); 
+    ctx.stroke();
+}
+ctx.restore();;
 
 
 
@@ -563,16 +627,21 @@ if (isJumping) {
             }
 
 // 碰撞偵測 (統一半徑 50)
-            if (Math.hypot(px - item.x, py - item.y) < 50) { 
-                if (item.type === '❤️') {
-                    if (lives < MAX_LIVES) lives++; 
-                    heartTimer = 40; // 跳出 +❤️
-                } else if (item.type === '⭐') {
-                    powerUpTimer = 180; // 進入無敵，不加分
-} else if (item.type === 'FOOD') {
-                    score += 30; 
-                    heartTimer = 40; // 觸發頭頂飄字
-                    
+if (Math.hypot(px - item.x, py - item.y) < 50) { 
+    if (item.type === '❤️') {
+        playSound('heal.mp3'); // 💡 愛心音效
+        if (lives < MAX_LIVES) lives++; 
+        heartTimer = 40; 
+        floatType = "HEART"; // 💡 標記為愛心
+    } else if (item.type === '⭐') {
+        playSound('collect.mp3'); // 💡 星星音效
+        powerUpTimer = 180; 
+    } else if (item.type === 'FOOD') {
+        playSound('collect.mp3'); // 💡 美食音效
+        score += 30; 
+        heartTimer = 40; 
+        floatType = "FOOD"; // 💡 標記為美食
+    
                     // --- 💡 右上角跳動特效 ---
                     const scoreEl = document.getElementById('liveScore');
                     if (scoreEl) {
@@ -615,13 +684,18 @@ if (frame % spawnRate === 0) {
         }
     } 
     // 次要判定：雪堆生成 (100分以後，機率 20%)
-    else if (score >= 40 && rand <= 0.35) { // 這裡 0.35 是累加機率 (0.15~0.35 區間)
+    else if (score >= 30 && rand <= 0.35) { // 這裡 0.35 是累加機率 (0.15~0.35 區間)
         obstacles.push({ 
             x: x, y: y, 
             file: 'snow_pile.webp', 
             type: 'obstacle' 
         });
     } 
+ // 在生成障礙物的 if (frame % spawnRate === 0) 區塊內
+else if (score >= 80 && rand <= 0.5 && (frame - lastIceFrame > 100)) { 
+        obstacles.push({ x, y, file: 'ice.webp', type: 'ice' });
+        lastIceFrame = frame; // 更新時間
+    }   
     // 基本判定：普通障礙物 (任何分數，剩下的機率)
     else {
         const file = OBSTACLE_FILES[Math.floor(Math.random() * OBSTACLE_FILES.length)];
@@ -633,22 +707,18 @@ if (frame % spawnRate === 0) {
     }
 }
 
-        // --- 處理所有物件的移動與碰撞 ---
+// --- 處理所有物件的移動與碰撞 ---
         for (let i = obstacles.length - 1; i >= 0; i--) {
             let o = obstacles[i]; 
             o.y -= speed;
 
-            const config = (o.type === 'ramp') ? { w: 70, h: 70, r: 30 } : (OBSTACLE_CONFIG[o.file] || { w: 60, h: 60, r: 35 });
+            const config = (o.type === 'ramp') ? { w: 100, h: 100, r: 30 } : (OBSTACLE_CONFIG[o.file] || { w: 60, h: 60, r: 35 });
             const img = obsImages[o.file];
 
             ctx.save();
-            
-            if (o.type === 'ramp' && (!img || !img.complete)) {
-                // 測試用：還沒換圖前畫一個藍色跳台色塊
-                ctx.fillStyle = '#3498db';
-                ctx.fillRect(o.x - config.w/2, o.y - config.h/2, config.w, config.h);
-            } else if (img && img.complete) {
-                if (powerUpTimer > 0 && o.type !== 'ramp' && Math.hypot(px - o.x, py - o.y) < config.r + 20) ctx.globalAlpha = 0.3;
+            if (img && img.complete) {
+                // 如果有無敵，障礙物變半透明
+                if (powerUpTimer > 0 && o.type !== 'ramp' && o.type !== 'ice' && Math.hypot(px - o.x, py - o.y) < config.r + 20) ctx.globalAlpha = 0.3;
                 ctx.drawImage(img, o.x - config.w / 2, o.y - config.h / 2, config.w, config.h);
             }
             ctx.restore();
@@ -656,50 +726,80 @@ if (frame % spawnRate === 0) {
             // 碰撞判定
             const dist = Math.hypot(px - o.x, py - o.y);
             if (dist < config.r + 5) {
-                if (o.type === 'ramp') {
+                
+// --- 🧊 類型 1：冰面 (修正版) ---
+if (o.type === 'ice') {
+    // 增加冰面特有的粒子：亮晶晶的碎片
+    if (frame % 3 === 0) {
+        particles.push({
+            x: px + (Math.random() - 0.5) * 40,
+            y: py + 20,
+            vx: (Math.random() - 0.5) * 5,
+            vy: -Math.random() * 3,
+            life: 15,
+            alpha: 0.8,
+            isTrack: false,
+            isIceGlow: true // 新增標記
+        });
+    }
+    
+    // 增加一點點左右晃動，模擬失控感
+    px += (Math.random() - 0.1) * 3; 
+
+    // 全螢幕濾鏡加強：讓顏色更有「冰冷感」
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = 'rgba(0, 191, 255, 0.25)'; // 亮藍色
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+}
+                
+                // --- 🚀 類型 2：跳台 ---
+                else if (o.type === 'ramp') {
                     if (!isJumping) {
                         isJumping = true;
-                        jumpV = 12; // 跳躍力度
+                        jumpV = 12;
+                        playSound('jump.mp3'); // 💡 起跳音效
                         updateScore(50);
                         obstacles.splice(i, 1);
                     }
-} else if (o.file === 'snow_pile.webp') { 
-    // 【雪堆碎裂邏輯】
-    // 💡 關鍵：只有在「非無敵狀態」下才會斷 Combo
+                } 
+                
+                // --- ❄️ 類型 3：雪堆 (減速保命，斷 Combo) ---
+else if (o.file === 'snow_pile.webp') { 
     if (powerUpTimer <= 0) {
         comboCount = 0; 
-        snowHitTimer = 20; // 顯示受驚表情
-    }
-    
-    // 無論有無無敵，雪堆都會消失並噴發粒子（這樣才帥！）
-    obstacles.splice(i, 1);
-            // 生成白色粒子噴發
-            for(let j=0; j < 25; j++) {
-                particles.push({
-        x: o.x,
-        y: o.y,
-        // 加大爆發初速
-        vx: (Math.random() - 0.5) * 18, 
-        vy: (Math.random() - 0.8) * 15, // 讓大部分粒子先向上噴再掉下來
-        life: 30 + Math.random() * 20,
-        alpha: 1,
-        size: 3 + Math.random() * 5,    // 讓粒子大小不一，更有碎塊感
-        isTrack: false,
-        isSnowBurst: true,              // 新增標記，用來套用物理邏輯
-        gravity: 0.5                    // 給予重力常數
-    });
-
-            }
-                } else if (powerUpTimer <= 0 && invincibilityTimer <= 0 && !isJumping) {
+        snowHitTimer = 20;
+        playSound('snow_burst.mp3'); // 💡 雪堆碎裂音效
+        speed = Math.max(7, speed - 1.5);// 💡 1. 雪堆減速調小 (原本 3.5 改 1.5)
+                    }
+                    obstacles.splice(i, 1);
+                    // 噴發粒子
+                    for(let j=0; j < 15; j++) {
+                        particles.push({
+                            x: o.x, y: o.y,
+                            vx: (Math.random() - 0.5) * 15, vy: (Math.random() - 0.8) * 10,
+                            life: 20, alpha: 1, size: 3 + Math.random() * 3,
+                            isTrack: false, isSnowBurst: true, gravity: 0.5
+                        });
+                    }
+                } 
+                
+                // --- 🪨 類型 4：硬障礙物 (扣血，只有不在跳躍且沒無敵時觸發) ---
+                else if (powerUpTimer <= 0 && invincibilityTimer <= 0 && !isJumping) {
                     lives--; 
                     comboCount = 0; 
                     obstacles.splice(i, 1); 
                     invincibilityTimer = 60;
                     if (lives <= 0) triggerGameOver(); 
                 }
-            } else if (o.y < -150) { 
+            } 
+            
+            // 離開畫面處理
+            else if (o.y < -150) { 
                 obstacles.splice(i, 1); 
-                if (o.type !== 'ramp') updateScore(1); 
+                // 只有閃過硬障礙物才加 1 分，閃過冰面或跳台不加這項基本分
+                if (o.type === 'obstacle') updateScore(1); 
             }
         }
 
@@ -811,14 +911,17 @@ for (let i = snowballs.length - 1; i >= 0; i--) {
 // --- 新增：滑雪痕跡粒子生成 ---
 if (frame % 2 === 0) {
     particles.push({ 
-        x: px, // 存儲當下人物的絕對 X
+        x: px, 
         y: py + 25, 
         vx: 0, 
         vy: 0, 
-        life: 30, 
-        alpha: 0.3, 
+        life: 40, // 增加壽命讓線條留久一點
+        alpha: 0.2, 
         isTrack: true, 
-        width: CHARS[selectedIdx].boardType === 'double' ? 12 : 22 
+        // 讓寬度隨雪板類型變化
+        width: CHARS[selectedIdx].boardType === 'double' ? 12 : 22,
+        // 紀錄當下速度，用來畫長條
+        currentSpeed: speed 
     });
 }
 
@@ -906,7 +1009,9 @@ x: px + (side * spread) + (Math.random() - 0.5) * 5, // 錯開中心點
         if (heartTimer > 0) heartTimer--;
         if (snowHitTimer > 0) snowHitTimer--; // 💡 每幀倒數
         let faceSuffix = "n";
-        if (!running || invincibilityTimer > 0) faceSuffix = "d"; 
+        if (!running || invincibilityTimer > 0) faceSuffix = "d"; // 優先級 1：死亡或受傷 (最優先)
+        // 優先級 2：踩到冰面 (高於無敵，給予驚嚇/失控感)
+        else if (onIce) faceSuffix = "s";
         else if (powerUpTimer > 0) faceSuffix = "e"; 
         else if (snowHitTimer > 0) faceSuffix = "s"; // 💡 關鍵：撞到雪堆時顯示 's' 表情
         else if (heartTimer > 0) faceSuffix = "b"; 
@@ -921,33 +1026,62 @@ x: px + (side * spread) + (Math.random() - 0.5) * 5, // 錯開中心點
         let breath = Math.sin(frame * 0.15) * 2; ctx.translate(0, breath); ctx.rotate(tilt * 0.5); 
         if (bodyImg && bodyImg.complete) {
 // --- 💡 玩家頭頂噴出的文字特效 ---
-            if (heartTimer > 0) { 
-                ctx.save(); 
-                ctx.setTransform(1, 0, 0, 1, 0, 0); // 使用絕對座標
-                ctx.translate(px, py); 
-                
-                // 設定文字樣式：粗黑體 (加重筆畫)
-                ctx.font = `900 ${Math.floor(drawW * 0.5)}px "Inter", sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.shadowBlur = 8;
-                ctx.shadowColor = "white";
+if (heartTimer > 0) {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.translate(px, py);
 
-                // 根據狀態決定文字內容與顏色
-                let floatText = "";
-                if (score % 30 === 0 && score > 0 && heartTimer > 10) {
-                    floatText = "+30";
-                    ctx.fillStyle = "#FFD700"; // 美食金黃色
-                } else if (lives > 0) {
-                    floatText = "+❤️"; // 愛心只顯示圖示，簡單明瞭
-                    ctx.fillStyle = "#ff4d4d";
-                }
-                
-                // 動態飄浮：隨著時間往上移並淡出
-                let yOffset = -drawH - -10 - (40 - heartTimer) * 1.5;
-                ctx.globalAlpha = heartTimer / 40; // 漸漸消失
-                ctx.fillText(floatText, 0, yOffset); 
-                ctx.restore();
-            }
+    ctx.font = `900 ${Math.floor(drawW * 0.5)}px "Inter", sans-serif`;
+    ctx.textAlign = 'center';
+
+
+  let colorStart = "", colorEnd = "";
+    let glowColor = "";  
+
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = "white";
+
+    // 判斷當下是吃到什麼
+    let floatText = "";
+// 💡 只根據 floatType 決定內容與顏色
+if (floatType === "FOOD") {
+        floatText = "+30"; 
+        colorStart = "#FFF5AD"; // 亮黃色
+        colorEnd = "#FFD700";   // 金色
+        glowColor = "rgba(255, 215, 0, 0.8)"; // 金色背光
+    } else if (floatType === "HEART") {
+        floatText = "+❤️"; 
+        colorStart = "#FFB3B3"; // 亮粉色
+        colorEnd = "#ff4d4d";   // 深紅色
+        glowColor = "rgba(255, 77, 77, 0.8)"; // 紅色背光
+    }
+    
+// A. 設定外發光 (Neon Glow)
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = glowColor;
+
+    // B. 建立垂直漸層 (使文字看起來有立體感)
+    let yBase = -drawH + 32 - (40 - heartTimer) * 1.5;
+    let grad = ctx.createLinearGradient(0, yBase - 20, 0, yBase);
+    grad.addColorStop(0, colorStart);
+    grad.addColorStop(1, colorEnd);
+    ctx.fillStyle = grad;
+
+    // C. 加上細微的縮放動畫 (吃到瞬間彈一下)
+    let popScale = heartTimer > 30 ? 1 + (heartTimer - 30) * 0.05 : 1;
+    ctx.scale(popScale, popScale);
+
+    // D. 繪製文字
+    ctx.globalAlpha = heartTimer / 40; // 淡出
+    ctx.fillText(floatText, 0, yBase);
+    
+    // E. 額外加上白色邊框讓文字更清晰 (可選)
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.lineWidth = 1;
+    ctx.strokeText(floatText, 0, yBase);
+
+    ctx.restore();
+}
 if (powerUpTimer > 0) { 
                 // 1. 設定閃爍濾鏡：每 2 幀切換一次「高亮金」與「原色」
                 ctx.filter = (frame % 4 < 2) ? 'brightness(1.5) sepia(0.5)' : 'none'; 
@@ -967,17 +1101,38 @@ if (powerUpTimer > 0) {
                 ctx.beginPath(); ctx.roundRect(-16 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
                 ctx.beginPath(); ctx.roundRect(2 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
             }
-            if (powerUpTimer > 0) {
+if (powerUpTimer > 0) {
                 ctx.save(); 
-                let glow = Math.sin(frame * 0.1) * 10 + 15;
-                ctx.shadowColor = "rgba(99, 62, 12, 0.8)"; ctx.shadowBlur = glow;
-                ctx.fillStyle = "#ffea4d"; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center';
-                ctx.fillText("🌟 無敵之身 🌟", 0, -drawH - 10 + Math.sin(frame * 0.05) * 5);
                 
-                // --- 修正：只有這個 😎 變彩虹色 ---
-                ctx.filter = `hue-rotate(${frame * 15}deg)`; 
-                ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; 
-                ctx.fillText("😎", 0, -drawH + 10); 
+                // 1. 動態計算位置與縮放 (增加一點呼吸跳動感)
+                let breathScale = 1 + Math.sin(frame * 0.1) * 0.05;
+                let yOffset = -drawH - -7 + Math.sin(frame * 0.1) * 5;
+                ctx.translate(0, yOffset);
+                ctx.scale(breathScale, breathScale);
+
+                // 2. 設置動態彩虹漸層 (隨時間滾動顏色)
+                let hue = (frame * 0.8) % 360; // 稍微放慢旋轉速度
+                let grad = ctx.createLinearGradient(-50, 0, 50, 0);
+                grad.addColorStop(0, `hsl(${hue}, 100%, 70%)`);
+                //grad.addColorStop(0.5, `hsl(${(hue + 60) % 360}, 100%, 80%)`);
+                //grad.addColorStop(1, `hsl(${(hue + 20) % 360}, 100%, 70%)`);
+
+                // 3. 強力霓虹發光
+let glowIntensity = Math.sin(frame * 0.1) * 5 + 15;
+ctx.shadowColor = `hsla(${hue}, 60%, 70%, 0.4)`; 
+ctx.shadowBlur = glowIntensity;
+
+                // 4. 繪製主文字
+                ctx.fillStyle = grad;
+                ctx.font = `900 ${Math.floor(drawW * 0.35)}px "Inter", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText("🌟 無敵之身 🌟", 0, 0);
+
+                // 5. 加上白色內發光邊框 (讓字在雜亂背景更清楚)
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+                ctx.lineWidth = 1;
+                ctx.strokeText("🌟 無敵之身 🌟", 0, 0);
+
                 ctx.restore();
             } else if (stormMode) {
                 ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.fillStyle = (frame % 20 < 10) ? '#ff4d4d' : '#ffcccc'; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center'; ctx.fillText("⚠️ 暴風雪來襲 ⚠️", (Math.random()-0.5)*3, -drawH - 30); ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; ctx.fillText("🥶", 0, -drawH + 10); ctx.restore();
@@ -1074,37 +1229,47 @@ p.x += p.vx;
 }
 function drawParticlesRelative() {
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置矩陣確保絕對座標繪製
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // 確保座標絕對定位
 
     particles.forEach(p => {
         ctx.save();
         ctx.globalAlpha = p.alpha;
 
-        if (p.isTrack) {
-            // --- 繪製：地面滑痕 ---
-            ctx.fillStyle = 'rgba(100, 130, 170, 0.2)';
+if (p.isTrack) {
+            // --- 💡 3. 繪製絲滑線條滑痕 ---
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; // 白色半透感
             ctx.beginPath();
-            ctx.ellipse(p.x, p.y, p.width / 2, 3, 0, 0, Math.PI * 2);
+            // 畫一個長方形，長度隨 speed 增加，營造線條感
+            let trackLen = p.currentSpeed * 2;
+            ctx.roundRect(p.x - p.width/2, p.y - trackLen, p.width, trackLen, 5);
             ctx.fill();
-        } else {
-            // --- 繪製：激起的雪花與暴風雪 ---
-            ctx.fillStyle = 'white';
+        }
+        else if (p.isStorm) {
+            // --- 2. 暴風雪粒子 (恢復顯示！) ---
             ctx.strokeStyle = 'white';
-            if (p.isStorm) {
-                // 暴風雪粒子維持絕對位置
-                ctx.lineWidth = p.size;
-                ctx.beginPath();
-                ctx.moveTo(p.x, p.y);
-                ctx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8);
-                ctx.stroke();
-} else {
-    // 滑行雪花粒子或碎裂碎塊
-    ctx.beginPath();
-    // 💡 使用 p.size 或預設值 2
-    let radius = p.isSnowBurst ? (p.size * 0.6) : 1.5;
-    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-    ctx.fill();
-}
+            ctx.lineWidth = p.size;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8);
+            ctx.stroke();
+        } 
+        else {
+            // --- 3. 其他噴發型粒子 (圓點類) ---
+            if (p.isIceGlow) {
+                // 💡 冰晶：亮青色發光
+                ctx.fillStyle = '#00f2ff';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#00f2ff';
+            } else {
+                // 雪堆碎裂或一般滑行雪花
+                ctx.fillStyle = 'white';
+            }
+
+            ctx.beginPath();
+            // 根據類型決定半徑
+            let radius = p.isSnowBurst ? (p.size * 0.6) : (p.isIceGlow ? 2.5 : 1.5);
+            ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+            ctx.fill();
         }
         ctx.restore();
     });
@@ -1133,8 +1298,12 @@ function togglePause() {
 function showLeaderboardPage() {
     document.getElementById('gameOverResult').classList.add('hidden');
     document.getElementById('gameOverLeaderboard').classList.remove('hidden');
+    
+    // 💡 啟動跑步小人
+    if (typeof startRunners === "function") {
+        startRunners(); 
+    }
 }
-
 
 
 async function triggerGameOver() {
@@ -1148,12 +1317,18 @@ async function triggerGameOver() {
     let nextMsg = "";
 
 const tiers = [
-        { score: 2500, medal: "👑", title: "【冰城至尊】", color: "text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white font-black italic" },
-        { score: 1700, medal: "💎", title: "【哈爾濱鑽石】", color: "text-cyan-300 drop-shadow-[0_0_10px_rgba(103,232,249,0.8)]" },
-        { score: 1300, medal: "🥇", title: "【哈爾濱傳說】", color: "text-yellow-400" },
-        { score: 900, medal: "🥈", title: "【專業滑雪手】", color: "text-gray-200" },
-        { score: 600, medal: "🥉", title: "【亞布力勇士】", color: "text-orange-400" },
-        { score: 400, medal: "🥽", title: "【滑雪道挑戰中】", color: "text-yellow-200" },
+        { score: 4000, medal: "🐉", title: "【極光永恆主宰】", color: "text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white font-black italic" },
+        { score: 3500, medal: "👑", title: "【冰城至尊神話】", color: "text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-500 font-black" },
+        { score: 2800, medal: "💎", title: "【哈爾濱璀璨鑽石】", color: "text-cyan-300 drop-shadow-[0_0_10px_rgba(103,232,249,0.8)]" },
+        { score: 2200, medal: "🏆", title: "【北境不敗傳說】", color: "text-cyan-300 drop-shadow-[0_0_8px_rgba(103,232,249,0.6)]" },
+        { score: 1900, medal: "🏅", title: "【極地暴風領主】", color: "text-blue-400 font-bold" },          
+        { score: 1600, medal: "🥇", title: "【巔峰滑雪大師】", color: "ttext-slate-300 italic underline decoration-blue-500" },        
+        { score: 1300, medal: "🥈", title: "【穿雲破雪者】", color: "text-yellow-400" },        
+        { score: 1100, medal: "🥉", title: "【專業滑雪手】", color: "text-teal-300" },
+        { score: 900, medal: "🥽", title: "【亞布力征服者】", color: "text-gray-300" },
+        { score: 700, medal: "🥾", title: "【雪地冒險家】", color: "text-orange-300" },
+        { score: 500, medal: "🧣", title: "【滑雪道挑戰者】", color: "text-orange-500" },
+        { score: 350, medal: "⛄", title: "【抗寒先遣隊】", color: "text-yellow-200" },
         { score: 200, medal: "🍬", title: "【滑雪初體驗】", color: "text-green-300" }
     ];
 
@@ -1173,7 +1348,7 @@ if (currentTierIdx === 0) {
     } else {
         let nextTier = tiers[currentTierIdx === -1 ? tiers.length - 1 : currentTierIdx - 1];
         let diff = nextTier.score - score;
-        nextMsg = `離下一階【${nextTier.title}】還差 <span class="text-yellow-300 font-bold">${diff}</span> 分`;
+        nextMsg = `離下一階 ${nextTier.title} 還差 <span class="text-yellow-300 font-bold">${diff}</span> 分`;
     }
 
 
@@ -1405,5 +1580,6 @@ function uploadScore(name, score, existingKey = null) {
 
 
 </script>
+<script src="runners.js"></script>
 </body>
 </html>
