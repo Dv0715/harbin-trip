@@ -103,12 +103,13 @@
 
     /* Map Card */
     .map-card {
+      position: relative; /* 確保裝飾能準確對齊卡片邊緣 */
       background: var(--card);
       backdrop-filter: blur(10px);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       border: 1px solid var(--card-border);
-      overflow: hidden;
+      /* overflow: hidden;*/
       padding-bottom: 20px;
     }
     
@@ -245,6 +246,48 @@
       font-size: 12px; backdrop-filter: blur(10px);
       user-select: none; pointer-events: none;
     }
+
+/* 建立冰雪裝飾層 */
+.map-card::before {
+    content: "";
+    position: absolute;
+    
+    /* 準確定位在左上角 */
+    top: -1.5%;   /* 向上偏移一點點，讓雪看起來是「掛」在框上的 */
+    left: -1%;  /* 向左偏移一點點，製造溢出的自然感 */
+    
+    /* 寬高設定：根據你的 frame.png 比例調整 */
+    width: 60%;  /* 寬度可以根據喜好調整 */
+    height: 5%; /* 高度可以根據喜好調整 */
+    
+    background-image: url('images/frame.png');
+    background-size: contain;    /* 保持圖片比例不變形 */
+    background-repeat: no-repeat;
+    
+    z-index: 100;     /* 確保它在文字和地圖之上 */
+    pointer-events: none; /* ❗極重要：讓點擊穿透，不會擋到「看相簿總覽」按鈕 */
+    
+    /* 如果圖片方向不對，可以用這個旋轉 */
+    /* transform: rotate(-5deg); */ 
+}
+
+/* 針對手機版的微調 */
+@media (max-width: 500px) {
+    .map-card::before {
+        width: 60%;;  /* 手機版縮小一點 */
+        height: 5%;
+        top: -1.5%;
+        left: -1%;
+    }
+}
+
+
+
+
+
+
+
+
 
     /* Pins & Anchors (完全保留原本位置邏輯) */
 /* 1. 外層：專心呼吸，不放 transition */
@@ -1118,6 +1161,7 @@ position: absolute;
 
       <section class="map-card">
         <div class="map-head">
+          <div class="snow-frame"></div>
           <div class="map-head-left">
             <p class="t">哈爾濱回憶地圖</p>
             <p class="s">2025/12/25~2025/12/30</p>
@@ -1129,6 +1173,7 @@ position: absolute;
 
         <!-- ✅ 這裡完全維持你原本的 HTML 結構與座標 -->
         <div class="map-stage" id="mapStage">
+          
           <img src="images/harbin_map.webp" alt="Harbin map">
 
           <!-- Circle Thumbnail Pins -->
