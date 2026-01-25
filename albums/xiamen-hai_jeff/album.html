@@ -202,7 +202,7 @@ function filterMedia(type) {
     if (displayMedia.length === 0) {
         container.innerHTML = '';
         emptyState.classList.remove('hidden');
-        emptyState.querySelector('p').textContent = `這裡目前沒有${type === 'video' ? '影片' : '照片'}...`;
+        emptyState.querySelector('p').textContent = `這裡目前沒有${type === 'video' ? '影片' : '照片'}~`;
         return;
     } else {
         emptyState.classList.add('hidden');
