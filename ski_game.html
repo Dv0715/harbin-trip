@@ -320,6 +320,7 @@ window.playerName = savedName || prompt("請輸入你的滑雪大名：", "神�
 localStorage.setItem('skiPlayerName', window.playerName);
 
 // 在 script 頂部（變數宣告區）加入這行
+let lastTime = 0; // 用來計算手機與電腦的時間差
 let currentScoreKey = null;
 let lastIceFrame = 0; // 💡 新增：紀錄上次生成冰面的時間
 
@@ -462,7 +463,7 @@ function start() {
     running = true; score = 0; lives = 5; comboCount = 0; speed = 7; 
     obstacles = []; items = []; particles = []; snowballs = [];
     px = tx = canvas.width / 2;
-    loop();
+    requestAnimationFrame(loop);
 
 }
 // 💡 停止跑步小人
@@ -480,11 +481,19 @@ function start() {
     window.addEventListener('touchmove', move, { passive: false });
     window.addEventListener('touchstart', move, { passive: false });
 
-    function loop() {
-        // --- 跳躍物理邏輯 ---
- // --- 核心摩擦力邏輯修正 ---
-         if(!running || isPaused) return; // 修改這行，加入 isPaused 判定
-        frame++; 
+function loop(timestamp) {
+    if(!running || isPaused) {
+        lastTime = 0;
+        return; 
+    }
+
+    // 計算時間差 (手機 FPS 低時，dt 就會變大)
+    if (!lastTime) lastTime = timestamp;
+    const elapsed = timestamp - lastTime;
+    const dt = Math.min(2, elapsed / 16.67); 
+    lastTime = timestamp;
+
+    frame++;
 
         if (powerUpTimer > 0) powerUpTimer--;
 
@@ -502,8 +511,8 @@ if (onIce) {
 }
 
 if (isJumping) {
-    jumpOffset += jumpV;
-    jumpV -= 0.6; // 重力加速，數值越大跳得越快，落地越重
+    jumpOffset += jumpV * dt;
+    jumpV -= 0.6 * dt; // 重力加速，數值越大跳得越快，落地越重
     if (jumpOffset <= 0) {
         jumpOffset = 0;
         jumpV = 0;
@@ -534,7 +543,7 @@ if (isJumping) {
             friction = 0.12;
         }
         
-        px += (tx - px) * friction;
+        px += (tx - px) * friction * dt;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 
@@ -595,7 +604,7 @@ ctx.restore();;
         // --- 2.2 統一處理所有道具 (移動、繪製、碰撞) ---
         for (let i = items.length - 1; i >= 0; i--) {
             let item = items[i]; 
-            item.y -= speed; 
+            item.y -= speed * dt;
 
             if (item.type === 'FOOD' && item.file) {
                 // 繪製：美食圖片 (帶有呼吸跳動特效)
@@ -710,7 +719,7 @@ else if (score >= 80 && rand <= 0.5 && (frame - lastIceFrame > 100)) {
 // --- 處理所有物件的移動與碰撞 ---
         for (let i = obstacles.length - 1; i >= 0; i--) {
             let o = obstacles[i]; 
-            o.y -= speed;
+            o.y -= speed * dt;
 
             const config = (o.type === 'ramp') ? { w: 100, h: 100, r: 30 } : (OBSTACLE_CONFIG[o.file] || { w: 60, h: 60, r: 35 });
             const img = obsImages[o.file];
