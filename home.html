@@ -861,7 +861,7 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
        ❄️ NEW: 家族互動底座樣式 (完全外掛，不影響排版)
        ------------------------------------------- */
 
-/* 1. 總容器：徹底固定置底，不隨畫面捲動 */
+/* 1. 總容器：確保它能橫向捲動 */
 .footer-game-zone-wrap {
     position: fixed;
     bottom: 0; left: 0;
@@ -871,6 +871,7 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     display: flex;
     justify-content: center;
     align-items: flex-end;
+    
 }
 
 /* 確保 z-index 在點擊時能正確提升 */
@@ -915,17 +916,21 @@ position: absolute;
 
 /* 2. 人物層：關鍵的「自適應寬度」設計 */
 .family-line {
-    position: relative;
-    bottom: 20px;
-    width: 100%;          /* 預設寬度 */
-    max-width: 1920px;    /* ✅ 網頁版：上限設大一點，讓人物有空間「散開」 */
-    display: flex; 
-    justify-content: space-around; /* 讓人物在寬度內均勻散開 */
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%); /* 🔴 真正的水平置中 */
+    
+    /* 讓 7 個人在手機窄螢幕會自動縮小間距擠在一起 */
+    display: flex;
+    justify-content: center;
     align-items: flex-end;
-    overflow: visible !important; 
-    z-index: 220; 
-    pointer-events: auto;
-    margin: 0 auto;
+    
+    width: 100%;
+    max-width: 900px;    /* 跟你的地圖同寬，視覺最和諧 */
+    padding: 0 80px;     /* 預留給左右雪人的位置 */
+    box-sizing: border-box;
+    pointer-events: auto; /* 恢復人物點擊 */
 }
 /* 弧形雪地層：專心負責背景 */
 .snow-base-layer {
@@ -1008,30 +1013,32 @@ position: absolute;
 .family-line {
     position: absolute;
     bottom: 22px;
-    left: 50%;           /* 改為中心定位 */
-    transform: translateX(-50%); /* 配合中心定位 */
-    width: auto;         /* 寬度隨內容伸縮 */
-    min-width: 100%;     /* 至少跟螢幕一樣寬 */
+    left: 50%;
+    transform: translateX(-50%);
     display: flex; 
     justify-content: center;
     align-items: flex-end;
-    overflow: visible !important; 
-    z-index: 250; 
+    
+    /* 🟢 在這裡統一控制人物之間的距離 */
+    gap: 10px; /* 網頁版預設間距，你可以隨意改這個數字 */
+    
+    width: 100%;
+    max-width: 900px;
+    padding: 0 60px;
+    box-sizing: border-box;
     pointer-events: auto;
-    padding: 0 60px;     /* 給左右留一點雪人的空間 */
+    z-index: 250;
 }
+
 
 /* 1. 確保父容器有足夠空間，且不裁切內容 */
 .chibi-char {
     position: relative;
-    width: 90px;         
-    flex-shrink: 0 !important; /* 防止人物被擠壓變形或消失 */
+    flex: 0 1 85px;      /* 🔴 關鍵：在手機上空間不夠會自動縮小到 1 */
+    min-width: 35px;     /* 避免縮到完全消失 */
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    flex-shrink: 0 !important; /* 👈 關鍵：強制不準縮小，解決右邊消失問題 */
-      transform: translateZ(0);
-  will-change: transform;
 }
 
 /* 對話框主體 */
