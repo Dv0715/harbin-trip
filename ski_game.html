@@ -321,6 +321,8 @@ localStorage.setItem('skiPlayerName', window.playerName);
 
 // 在 script 頂部（變數宣告區）加入這行
 let lastTime = 0; // 用來計算手機與電腦的時間差
+
+
 let currentScoreKey = null;
 let lastIceFrame = 0; // 💡 新增：紀錄上次生成冰面的時間
 
@@ -548,7 +550,7 @@ if (isJumping) {
 
 
 
-        stormTimer++;
+        stormTimer += dt;
         if (stormTimer % 1200 === 0) stormMode = true; 
         if (stormMode && stormTimer % 1200 === 300) stormMode = false; 
 
@@ -565,7 +567,7 @@ ctx.strokeStyle = onIce ? '#ffffff' : '#c5e2f7';
 ctx.lineWidth = onIce ? 4 : 2; 
 
 for(let i=0; i< (onIce ? 12 : 6); i++) { // 💡 冰面上線條數量翻倍
-    let ly = (frame * speed * (onIce ? 1.5 : 0.8) + i * 150) % (canvas.height + 150);
+    let ly = (frame * speed * dt * (onIce ? 1.5 : 0.8) + i * 150) % (canvas.height + 150);
     ctx.beginPath(); 
     ctx.moveTo(i * canvas.width / (onIce ? 10 : 5), ly - 50); 
     ctx.lineTo(i * canvas.width / (onIce ? 10 : 5), ly + 50); 
@@ -638,15 +640,15 @@ ctx.restore();;
 // 碰撞偵測 (統一半徑 50)
 if (Math.hypot(px - item.x, py - item.y) < 50) { 
     if (item.type === '❤️') {
-        playSound('heal.mp3'); // 💡 愛心音效
+        playSound('heal.ogg'); // 💡 愛心音效
         if (lives < MAX_LIVES) lives++; 
         heartTimer = 40; 
         floatType = "HEART"; // 💡 標記為愛心
     } else if (item.type === '⭐') {
-        playSound('collect.mp3'); // 💡 星星音效
+        playSound('collect1.ogg'); // 💡 星星音效
         powerUpTimer = 180; 
     } else if (item.type === 'FOOD') {
-        playSound('collect.mp3'); // 💡 美食音效
+        playSound('collect2.ogg'); // 💡 美食音效
         score += 30; 
         heartTimer = 40; 
         floatType = "FOOD"; // 💡 標記為美食
@@ -768,7 +770,7 @@ if (o.type === 'ice') {
                     if (!isJumping) {
                         isJumping = true;
                         jumpV = 12;
-                        playSound('jump.mp3'); // 💡 起跳音效
+                        playSound('jump.ogg'); // 💡 起跳音效
                         updateScore(50);
                         obstacles.splice(i, 1);
                     }
@@ -779,7 +781,7 @@ else if (o.file === 'snow_pile.webp') {
     if (powerUpTimer <= 0) {
         comboCount = 0; 
         snowHitTimer = 20;
-        playSound('snow_burst.mp3'); // 💡 雪堆碎裂音效
+        playSound('snow_burst.ogg'); // 💡 雪堆碎裂音效
         speed = Math.max(7, speed - 1.5);// 💡 1. 雪堆減速調小 (原本 3.5 改 1.5)
                     }
                     obstacles.splice(i, 1);
