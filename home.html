@@ -818,14 +818,20 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     }   
 
 .family-line {
-        max-width: 280px; /* ✅ 手機版：上限設小一點，強迫人物「集中」 */
-        justify-content: center; /* 手機版居中靠攏 */
-        gap: 0px; 
+        /* 🟢 手機版佔螢幕比例：可以設 90% 或 100% */
+        width: 85%;       /* 手機版佔螢幕 85%，留 15% 給兩側雪人 */
+        max-width: none;
     }
-    .chibi-char {
-       width: 38px !important; /* 手機版每個人站近一點 */
+.chibi-char {
+        /* 🟢 手機版人物間距：
+           數值調大（如 14%）會變擠；
+           數值調小（如 10%）間距會變大。
+        */
+        width: 13%;       /* 手機版每個人佔容器的 13% */
     }
-
+#chibi-5, #chibi-6 {
+        display: flex !important;
+        visibility: visible !important;}
     /* 🔴 平時狀態：只在沒有 .throwing 時播放呼吸 */
     .chibi-char:not(.throwing) .chibi-sprite {
         transform: translateX(-50%) scale(0.12); 
@@ -919,18 +925,19 @@ position: absolute;
     position: absolute;
     bottom: 22px;
     left: 50%;
-    transform: translateX(-50%); /* 🔴 真正的水平置中 */
-    
-    /* 讓 7 個人在手機窄螢幕會自動縮小間距擠在一起 */
+    transform: translateX(-50%);
     display: flex;
-    justify-content: center;
+    justify-content: center; /* 讓 7 個人在容器內居中 */
     align-items: flex-end;
     
-    width: 100%;
-    max-width: 900px;    /* 跟你的地圖同寬，視覺最和諧 */
-    padding: 0 80px;     /* 預留給左右雪人的位置 */
-    box-sizing: border-box;
-    pointer-events: auto; /* 恢復人物點擊 */
+    /* 🟢 網頁版設置：你可以調整這裡的 % 數 */
+    width: 80%;           /* 網頁版佔螢幕寬度的 80% */
+    max-width: 900px;     /* 但最大不超過 900px，避免大螢幕站太開 */
+    
+    padding: 0;           /* 清除 padding 避免干擾百分比計算 */
+    pointer-events: auto;
+    z-index: 250;
+    overflow: visible !important;
 }
 /* 弧形雪地層：專心負責背景 */
 .snow-base-layer {
@@ -1034,8 +1041,12 @@ position: absolute;
 /* 1. 確保父容器有足夠空間，且不裁切內容 */
 .chibi-char {
     position: relative;
-    flex: 0 1 85px;      /* 🔴 關鍵：在手機上空間不夠會自動縮小到 1 */
-    min-width: 35px;     /* 避免縮到完全消失 */
+    /* 🟢 人物寬度控制：
+       100% / 7人 = 14.28%。 
+       如果你希望人物間距大一點，就把寬度調小（例如 11%）
+    */
+    width: 12%;           /* 網頁版每個人佔容器的 12% */
+    flex-shrink: 0;       /* 禁止人物消失 */
     display: flex;
     justify-content: center;
     align-items: flex-end;
