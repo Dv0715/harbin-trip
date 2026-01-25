@@ -775,18 +775,26 @@
 .footer-step-row {
   display: flex;
   align-items: center;
-  min-height: 44px; /* 固定高度防止抖動 */
+  justify-content: space-between; /* 🟢 關鍵：將按鈕推向兩端 */
+  gap: 16px; /* 🟢 兩者中間的最小間距 */
+  width: 100%;
+  max-width: 650px; /* 跟內容區同寬 */
+  margin: 0 auto;
 }
 
 .step-link {
+  flex: 1; /* 🟢 讓兩個按鈕平均分配寬度 */
   text-decoration: none;
-  padding: 12px 60px; /* 更俐落的比例 */
-  border-radius: 12px;
-  transition: all 0.2s ease;
-  font-size: 14px; /* 稍微縮小字體 */
-  font-weight: 600;
-  display: inline-flex;
+  height: 54px; /* 固定高度，點擊感更好 */
+  width: 45%;
+  border-radius: 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 /* ⬅️ 前一天：如果只有它，它會自然靠左 */
@@ -804,12 +812,23 @@
   box-shadow: 0 2px 8px rgba(57, 147, 236, 0.6);
 }
 
+/* 只有一個按鈕時（例如首頁或末頁）的自動對齊邏輯 */
+.footer-step-row:not(:has(.prev)) .next {
+  margin-left: auto; /* 只有下一天時，靠右站 */
+  flex: 0 0 calc(50% - 8px); /* 寬度維持一半 */
+}
+
+
 /* 兩者同時存在時，取消 next 的自動靠右，讓它們撐開 */
 .footer-step-row:has(.prev):has(.next) .step-link {
   flex: 0 1 auto; /* 不強制撐滿，保持俐落大小 */
 }
 
-.step-link:active { transform: scale(0.96); }
+/* 點擊回饋 */
+.step-link:active {
+  transform: scale(0.95);
+  filter: brightness(0.9);
+}
 
 /* --- 返回頁首按鈕 --- */
 .footer-top-row {

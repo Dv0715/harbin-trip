@@ -774,18 +774,26 @@
 .footer-step-row {
   display: flex;
   align-items: center;
-  min-height: 44px; /* 固定高度防止抖動 */
+  justify-content: space-between; /* 🟢 關鍵：將按鈕推向兩端 */
+  gap: 16px; /* 🟢 兩者中間的最小間距 */
+  width: 100%;
+  max-width: 650px; /* 跟內容區同寬 */
+  margin: 0 auto;
 }
 
 .step-link {
+  flex: 1; /* 🟢 讓兩個按鈕平均分配寬度 */
   text-decoration: none;
-  padding: 12px 60px; /* 更俐落的比例 */
-  border-radius: 12px;
-  transition: all 0.2s ease;
-  font-size: 14px; /* 稍微縮小字體 */
-  font-weight: 600;
-  display: inline-flex;
+  height: 54px; /* 固定高度，點擊感更好 */
+  width: 45%;
+  border-radius: 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 /* ⬅️ 前一天：如果只有它，它會自然靠左 */
