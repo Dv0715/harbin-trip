@@ -179,17 +179,6 @@
     60% { transform: scale(1.2); }
     100% { transform: scale(1); opacity: 1; }
 }
-
-/* 負面跳動：紅色縮小感 */
-@keyframes combo-damage {
-    0% { transform: scale(1); color: #ff4d4d; }
-    50% { transform: scale(0.8); color: #ff0000; text-shadow: 0 0 15px #ff0000; }
-    100% { transform: scale(1); color: #ff9800; }
-}
-.combo-damage-active { 
-    animation: combo-damage 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-}
-
 /* 橘紅色與跳動動畫 */
 .score-highlight-group {
     color: #ffc422; /* 橘紅色，介於橘與紅之間 */
@@ -497,7 +486,6 @@ function start() {
     window.addEventListener('touchstart', move, { passive: false });
 
 function loop(timestamp) {
-
     if(!running || isPaused) {
         lastTime = 0;
         return; 
@@ -569,11 +557,7 @@ if (isJumping) {
         if (stormMode && stormTimer % 1200 === 300) stormMode = false; 
 
 
-// 在 loop 裡面加入
-if (running && !isPaused && !onIce && powerUpTimer <= 0) {
-    // 每 100 幀微幅增加基礎速度，營造越滑越快的感覺
-    speed += 0.002; 
-}
+
 
 
 
@@ -794,28 +778,15 @@ if (o.type === 'ice') {
                     }
                 } 
                 
-// --- ❄️ 類型 3：雪堆 (平衡調整版) ---
+                // --- ❄️ 類型 3：雪堆 (減速保命，斷 Combo) ---
 else if (o.file === 'snow_pile.webp') { 
     if (powerUpTimer <= 0) {
-        // 1. 定義要扣掉的量 (例如扣除一半)
-        const lostAmount = Math.floor(comboCount / 2);
-        comboCount -= lostAmount; 
-        
-        snowHitTimer = 20; // 觸發表情切換
-        playSound('snow_burst.ogg');
-        
-        // 2. 速度懲罰改為百分比，確保高標速度感能延續
-        speed = Math.max(9, speed * 0.85); 
-
-        // 3. 💡 觸發右上角紅色跳動旗標
-        window.isComboDamaged = true; 
-        // 500ms 後恢復正常顏色
-        setTimeout(() => { window.isComboDamaged = false; }, 500);
-        
-        // 4. 💡 讓 comboScale 彈一下，視覺更有衝擊
-        comboScale = 1.5; 
-    }
-    obstacles.splice(i, 1);
+        comboCount = 0; 
+        snowHitTimer = 20;
+        playSound('snow_burst.ogg'); // 💡 雪堆碎裂音效
+        speed = Math.max(7, speed - 1.5);// 💡 1. 雪堆減速調小 (原本 3.5 改 1.5)
+                    }
+                    obstacles.splice(i, 1);
                     // 噴發粒子
                     for(let j=0; j < 15; j++) {
                         particles.push({
@@ -1197,13 +1168,6 @@ if (comboCount >= 3) {
             let comboColor, shadowColor, glowBlur = 10;
             let label = " COMBO";
 
-// 💡 關鍵：判定是否正在「受損狀態」
-    if (window.isComboDamaged) {
-        comboColor = "#ff4d4d"; // 負面警告紅
-        shadowColor = "#ff0000";
-        glowBlur = 20;
-        label = " LOSS!";
-} else {
             if (comboCount >= 60) {
                 // 🔥 100連擊：紅色 + 著火閃爍感
                 comboColor = "#ff0000";
@@ -1220,7 +1184,7 @@ if (comboCount >= 3) {
                comboColor = "#ff9800";
                 shadowColor = "#ffeb3b";
             }
-        }
+
             ctx.shadowColor = shadowColor;
             ctx.shadowBlur = glowBlur;
             ctx.font = 'bold 28px "Space Mono", monospace'; // 稍微加大字體
