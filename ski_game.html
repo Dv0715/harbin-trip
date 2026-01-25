@@ -463,6 +463,8 @@ function start() {
 
     isPaused = false;
     running = true; score = 0; lives = 5; comboCount = 0; speed = 7; 
+    stormTimer = 1; 
+    stormMode = false;
     obstacles = []; items = []; particles = []; snowballs = [];
     px = tx = canvas.width / 2;
     requestAnimationFrame(loop);
