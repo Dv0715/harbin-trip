@@ -680,7 +680,7 @@ if (frame % spawnRate === 0) {
     let y = canvas.height + 100;
 
     // 優先判定：跳台生成 (150分以後，機率 15%)
-    if (score >= 150 && !stormMode && rand <= 0.15) {
+    if (score >= 60 && !stormMode && rand <= 0.15) {
         obstacles.push({ 
             x: x, y: y, 
             file: 'ramp.webp', 
@@ -697,7 +697,7 @@ if (frame % spawnRate === 0) {
         }
     } 
     // 次要判定：雪堆生成 (100分以後，機率 20%)
-    else if (score >= 30 && rand <= 0.35) { // 這裡 0.35 是累加機率 (0.15~0.35 區間)
+    else if (score >= 20 && rand <= 0.35) { // 這裡 0.35 是累加機率 (0.15~0.35 區間)
         obstacles.push({ 
             x: x, y: y, 
             file: 'snow_pile.webp', 
@@ -705,7 +705,7 @@ if (frame % spawnRate === 0) {
         });
     } 
  // 在生成障礙物的 if (frame % spawnRate === 0) 區塊內
-else if (score >= 80 && rand <= 0.5 && (frame - lastIceFrame > 100)) { 
+else if (score >= 120 && rand <= 0.5 && (frame - lastIceFrame > 100)) { 
         obstacles.push({ x, y, file: 'ice.webp', type: 'ice' });
         lastIceFrame = frame; // 更新時間
     }   

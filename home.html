@@ -818,18 +818,21 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     }   
 
 .family-line {
-        /* 🟢 手機版佔螢幕比例：可以設 90% 或 100% */
-        width: 80%;       /* 手機版佔螢幕 85%，留 15% 給兩側雪人 */
+        /* 🟢 手機版容器佔 100% 寬度，確保最左最右的人有位子站 */
+        width: 70% !important;
         max-width: none;
+        padding: 0 45px; /* 留出空間給兩側的雪人，避免重疊 */
+        box-sizing: border-box;
     }
 .chibi-char {
-        /* 🟢 手機版人物間距：
-           數值調大（如 14%）會變擠；
-           數值調小（如 10%）間距會變大。
+        /* 🟢 手機版間距：
+           因為外層有 padding，這裡我們同樣使用 14% 確保 7 個人平分。
         */
-        width: 10%;       /* 手機版每個人佔容器的 13% */
+        width: 14% !important;
+        transform: scale(0.95); /* 稍微縮小一點點，增加呼吸感 */
     }
-#chibi-5, #chibi-6 {
+/* 確保所有角色都強制顯示 */
+    #chibi-0, #chibi-1, #chibi-2, #chibi-3, #chibi-4, #chibi-5, #chibi-6 {
         display: flex !important;
         visibility: visible !important;}
     /* 🔴 平時狀態：只在沒有 .throwing 時播放呼吸 */
@@ -927,14 +930,13 @@ position: absolute;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    justify-content: center; /* 讓 7 個人在容器內居中 */
+    justify-content: center; 
     align-items: flex-end;
     
-    /* 🟢 網頁版設置：你可以調整這裡的 % 數 */
-    width: 80%;           /* 網頁版佔螢幕寬度的 80% */
-    max-width: 900px;     /* 但最大不超過 900px，避免大螢幕站太開 */
-    
-    padding: 0;           /* 清除 padding 避免干擾百分比計算 */
+    /* 🟢 網頁版：容器佔 90%，給人物更多空間散開 */
+    width: 90%; 
+    max-width: 900px; 
+    padding: 0;
     pointer-events: auto;
     z-index: 250;
     overflow: visible !important;
@@ -1016,26 +1018,7 @@ position: absolute;
     image-rendering: auto;
 }
 
-/* 1. 修正人物層容器 */
-.family-line {
-    position: absolute;
-    bottom: 22px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex; 
-    justify-content: center;
-    align-items: flex-end;
-    
-    /* 🟢 在這裡統一控制人物之間的距離 */
-    gap: 10px; /* 網頁版預設間距，你可以隨意改這個數字 */
-    
-    width: 100%;
-    max-width: 800px;
-    padding: 0 60px;
-    box-sizing: border-box;
-    pointer-events: auto;
-    z-index: 250;
-}
+
 
 
 /* 1. 確保父容器有足夠空間，且不裁切內容 */
@@ -1157,7 +1140,7 @@ position: absolute;
   </a>
 
         <div class="brand">
-          <h1>旅行回憶*哈爾濱</h1>
+          <h1>旅行回憶｜哈爾濱</h1>
           <div class="meta">紀揚寶貝們的2025哈爾濱之旅</div>
         </div>
 <div class="ski-game-entrance">
