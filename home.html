@@ -534,7 +534,17 @@
       transition: all .2s;
     }
     .chapter-card:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.08); border-color: rgba(255,255,255,0.2); }
-    .chapter-dot { width: 10px; height: 10px; border-radius: 50%; background: #0071e3; box-shadow: 0 0 10px 0.1px rgba(0, 113, 227, 0.836); }
+    .chapter-dot {
+    width: 10px; 
+    height: 10px; 
+    border-radius: 50%; 
+    background: #0071e3; 
+    box-shadow: 0 0 10px 0.1px rgba(0, 113, 227, 0.84);
+    
+    /* 🟢 關鍵修正 */
+    flex-shrink: 0;   /* 👈 絕對禁止收縮，保證寬度永遠是 10px */
+    flex-grow: 0;     /* 👈 確保它不會自動變大 */
+}
     .chapter-title { font-size: 13px; font-weight: 800; margin: 0; }
     .chapter-sub { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
 
