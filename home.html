@@ -872,9 +872,13 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     }   
 
 .family-line {
-        width: 100% !important;
-        padding: 0 5px !important; /* 手機版邊距降到最低 */
-        justify-content: space-between; /* 手機版讓大家均勻散開 */
+        /* 將 100% 改小，人物就會自動往中間靠攏 */
+        width: 75% !important; 
+        padding: 0 !important;
+        justify-content: space-between; 
+        /* 確保依然水平居中 */
+        left: 50%;
+        transform: translateX(-50%);
     }
 /* 調整縮放倍率，避免 7 個人擠在一起撞到 */
     .chibi-char .chibi-sprite {
@@ -983,7 +987,7 @@ position: absolute;
     justify-content: center; /* 網頁版置中 */
     align-items: flex-end;
     
-    width: 100%;           /* 👈 強制撐開到 100% */
+    width: 75%;           /* 👈 強制撐開到 100% */
     max-width: 900px; 
     padding: 0 10px;       /* 👈 縮小邊距，留空間給 Vi */
     pointer-events: auto;
