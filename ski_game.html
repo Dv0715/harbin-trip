@@ -250,7 +250,7 @@
     <div class="snow-bg"></div>
     <div id="uiStart" class="ui-panel pointer-events-auto">
         <h1 class="text-5xl font-black italic mb-3 text-blue-300 title-bounce">滑雪挑戰GO！🧊</h1>
-        <p class="text-gray-300 mb-10 text-sm tracking-widest uppercase">❄️ Yabuli Special Edition ❄️</p>
+        <p class="text-gray-300 mb-10 text-sm tracking-widest uppercase">❄️ 亞布力大冒險 ❄️</p>
         <div id="charSelect"></div>
         <button onclick="start()" class="btn-action text-xl px-12 py-4">開始滑雪</button>
     </div>
@@ -374,7 +374,7 @@ const foodImages = {}; // 用來存放預載入的圖片
         '1.webp': { w: 70, h: 60, r: 35 }, 
         '2.webp': { w: 50, h: 50, r: 35 }, 
         '3.webp': { w: 70, h: 90, r: 35 },
-        'ramp.webp': { w: 110, h: 110, r: 40 }, // 新增：讓跳台寬一點，好踩！
+        'ramp.webp': { w: 100, h: 100, r: 70 }, // 新增：讓跳台寬一點，好踩！
         'snow_pile.webp': { w: 100, h: 100, r: 30 }, // 💡 新增雪堆配置
         'ice.webp': { w: 100, h: 100, r: 60 } // 冰面通常大一點，比較好踩
     };
@@ -564,15 +564,37 @@ if (isJumping) {
 
 
 
-        stormTimer += dt;
-        if (stormTimer % 1200 === 0) stormMode = true; 
-        if (stormMode && stormTimer % 1200 === 300) stormMode = false; 
+// --- ⛈️ 動態暴風雪頻率 (修正開局即觸發的問題) ---
+stormTimer += dt;
+let stormCycle = 1500;    // 15秒一輪
+let stormDuration = 300; // 持續 5 秒
+
+// 💡 取得目前在 15 秒循環中的位置 (0~899)
+let currentTimeInCycle = stormTimer % stormCycle;
+
+// 💡 修改判定：讓它在 10~15 秒 (即 600~900 區間) 才觸發
+// 這樣 0~10 秒就是安全的滑行時間
+if (currentTimeInCycle > (stormCycle - stormDuration)) {
+    if (!stormMode) stormMode = true; 
+} else {
+    if (stormMode) stormMode = false;
+}
 
 
-// 在 loop 裡面加入
-if (running && !isPaused && !onIce && powerUpTimer <= 0) {
-    // 每 100 幀微幅增加基礎速度，營造越滑越快的感覺
-    speed += 0.002; 
+// --- 🚀 動態難度加速邏輯 ---
+if (running && !isPaused && !onIce) {
+    let accel = 0.0015; // 基礎加速
+
+    if (score > 1500) {
+        accel = 0.005;  // 超高速期 (地獄難度)
+    } else if (score > 600) {
+        accel = 0.003;  // 衝刺期
+    }
+
+    speed += accel;
+    
+    // 限制最高速，避免畫面快到閃退 (建議 35)
+    speed = Math.min(speed, 35); 
 }
 
 
@@ -741,7 +763,8 @@ else if (score >= 120 && rand <= 0.5 && (frame - lastIceFrame > 100)) {
             let o = obstacles[i]; 
             o.y -= speed * dt;
 
-            const config = (o.type === 'ramp') ? { w: 100, h: 100, r: 30 } : (OBSTACLE_CONFIG[o.file] || { w: 60, h: 60, r: 35 });
+            // 這裡直接給跳台一個超大的判定半徑，例如 80，而不使用 config 裡的舊數值
+const config = (o.type === 'ramp') ? { w: 100, h: 100, r: 80 } : (OBSTACLE_CONFIG[o.file] || { w: 60, h: 60, r: 35 });
             const img = obsImages[o.file];
 
             ctx.save();
@@ -752,8 +775,10 @@ else if (score >= 120 && rand <= 0.5 && (frame - lastIceFrame > 100)) {
             }
             ctx.restore();
 
-            // 碰撞判定
-            const dist = Math.hypot(px - o.x, py - o.y);
+// 💡 建議修改為 (增加橫向判定寬容度)：
+const dist = Math.hypot(px - o.x, py - o.y);
+// 只要距離夠近 OR (縱向接近且橫向在跳台寬度內)
+const isHitRamp = o.type === 'ramp' && Math.abs(px - o.x) < 60 && Math.abs(py - o.y) < 40;
             if (dist < config.r + 5) {
                 
 // --- 🧊 類型 1：冰面 (修正版) ---
@@ -794,38 +819,46 @@ if (o.type === 'ice') {
                     }
                 } 
                 
-// --- ❄️ 類型 3：雪堆 (平衡調整版) ---
+// --- ❄️ 類型 3：雪堆 (視覺爽快版) ---
 else if (o.file === 'snow_pile.webp') { 
     if (powerUpTimer <= 0) {
-        // 1. 定義要扣掉的量 (例如扣除一半)
-        const lostAmount = Math.floor(comboCount / 2);
-        comboCount -= lostAmount; 
+        let penalty = 30;
+        score = Math.max(0, score - penalty); 
         
-        snowHitTimer = 20; // 觸發表情切換
+        // 1. 💡 觸發頭頂文字效果
+        heartTimer = 40; 
+        floatType = "SNOW"; // 新增類型：雪堆
+        snowHitTimer = 30;  // 顯示暈眩表情
+        
+        // 2. 視覺反饋：分數面板閃紅
+        const liveScoreEl = document.getElementById('liveScore');
+        if (liveScoreEl) {
+            liveScoreEl.textContent = score;
+            liveScoreEl.style.color = "#ff4d4d";
+            setTimeout(() => { liveScoreEl.style.color = "#6edaff"; }, 300);
+        }
         playSound('snow_burst.ogg');
-        
-        // 2. 速度懲罰改為百分比，確保高標速度感能延續
-        speed = Math.max(9, speed * 0.85); 
-
-        // 3. 💡 觸發右上角紅色跳動旗標
-        window.isComboDamaged = true; 
-        // 500ms 後恢復正常顏色
-        setTimeout(() => { window.isComboDamaged = false; }, 500);
-        
-        // 4. 💡 讓 comboScale 彈一下，視覺更有衝擊
-        comboScale = 1.5; 
     }
     obstacles.splice(i, 1);
-                    // 噴發粒子
-                    for(let j=0; j < 15; j++) {
-                        particles.push({
-                            x: o.x, y: o.y,
-                            vx: (Math.random() - 0.5) * 15, vy: (Math.random() - 0.8) * 10,
-                            life: 20, alpha: 1, size: 3 + Math.random() * 3,
-                            isTrack: false, isSnowBurst: true, gravity: 0.5
-                        });
-                    }
-                } 
+// --- ❄️ 類型 3：雪堆粒子噴發微調 ---
+for(let j=0; j < 25; j++) { // 數量增加到 25 顆更壯觀
+    particles.push({
+        x: o.x, 
+        y: o.y,
+        // 💡 1. 噴發力：水平範圍加大，垂直初速加強
+        vx: (Math.random() - 0.5) * 22, 
+        vy: (Math.random() - 0.8) * 18,
+        // 💡 2. 壽命與大小：讓粒子有大有小
+        life: 25 + Math.random() * 10, 
+        alpha: 1, 
+        size: 4 + Math.random() * 6, 
+        isTrack: false, 
+        isSnowBurst: true, 
+        // 💡 3. 物理感：重力稍重一點，讓雪塊有重量感
+        gravity: 0.6 
+    });
+}
+}
                 
                 // --- 🪨 類型 4：硬障礙物 (扣血，只有不在跳躍且沒無敵時觸發) ---
                 else if (powerUpTimer <= 0 && invincibilityTimer <= 0 && !isJumping) {
@@ -1068,6 +1101,7 @@ x: px + (side * spread) + (Math.random() - 0.5) * 5, // 錯開中心點
         let breath = Math.sin(frame * 0.15) * 2; ctx.translate(0, breath); ctx.rotate(tilt * 0.5); 
         if (bodyImg && bodyImg.complete) {
 // --- 💡 玩家頭頂噴出的文字特效 ---
+
 if (heartTimer > 0) {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1096,6 +1130,10 @@ if (floatType === "FOOD") {
         colorStart = "#FFB3B3"; // 亮粉色
         colorEnd = "#ff4d4d";   // 深紅色
         glowColor = "rgba(255, 77, 77, 0.8)"; // 紅色背光
+ } else if (floatType === "SNOW") {
+        floatText = "-30"; // 加上暈眩星星
+        colorStart = "#ff9a9a"; colorEnd = "#cc0000";
+        glowColor = "rgba(255, 0, 0, 0.6)";
     }
     
 // A. 設定外發光 (Neon Glow)
@@ -1144,40 +1182,39 @@ if (powerUpTimer > 0) {
                 ctx.beginPath(); ctx.roundRect(2 + bindSwing, -7.5, 17, 12, 4); ctx.fill();
             }
 if (powerUpTimer > 0) {
-                ctx.save(); 
-                
-                // 1. 動態計算位置與縮放 (增加一點呼吸跳動感)
-                let breathScale = 1 + Math.sin(frame * 0.1) * 0.05;
-                let yOffset = -drawH - -7 + Math.sin(frame * 0.1) * 5;
-                ctx.translate(0, yOffset);
-                ctx.scale(breathScale, breathScale);
+    ctx.save(); 
+    
+    // 1. 動態計算位置與縮放
+    let breathScale = 1 + Math.sin(frame * 0.1) * 0.05;
+    // 💡 修正 yOffset：原本的 -drawH - -7 看起來有點亂，改為直接與角色頭頂保持距離
+    let yBaseOffset = -drawH - 15; 
+    ctx.translate(0, yBaseOffset + Math.sin(frame * 0.1) * 5);
+    ctx.scale(breathScale, breathScale);
 
-                // 2. 設置動態彩虹漸層 (隨時間滾動顏色)
-                let hue = (frame * 0.8) % 360; // 稍微放慢旋轉速度
-                let grad = ctx.createLinearGradient(-50, 0, 50, 0);
-                grad.addColorStop(0, `hsl(${hue}, 100%, 70%)`);
-                //grad.addColorStop(0.5, `hsl(${(hue + 60) % 360}, 100%, 80%)`);
-                //grad.addColorStop(1, `hsl(${(hue + 20) % 360}, 100%, 70%)`);
+    // 2. 💡 鎖定金黃色調的閃爍邏輯 (不使用容易出錯的 HSL)
+    // 透過 sin 函數在 #FFD700 (金) 與 #FFFACD (亮黃) 之間循環
+    let brightness = Math.sin(frame * 0.2) * 0.5 + 0.5; // 0 ~ 1 循環
+    let goldColor = `rgb(255, ${200 + brightness * 55}, ${0 + brightness * 150})`; 
+    // 或者是更穩定的寫法：
+    let flashColor = (frame % 10 < 5) ? "#FFD700" : "#FFF5AD";
 
-                ctx.fillStyle = "#ffea4d"; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center';
-                ctx.fillText("🌟 無敵之身 🌟", 0, -drawH - 10 + Math.sin(frame * 0.05) * 5);
-                // 3. 強力霓虹發光
-//let glowIntensity = Math.sin(frame * 0.1) * 5 + 15;
-//ctx.shadowColor = `hsla(${hue}, 60%, 70%, 0.4)`; 
-//ctx.shadowBlur = glowIntensity;
+    // 3. 設置發光與文字
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "rgba(255, 215, 0, 0.6)"; // 鎖定金色發光
+    
+    ctx.fillStyle = flashColor;
+    ctx.font = `900 ${Math.floor(drawW * 0.38)}px "Inter", sans-serif`;
+    ctx.textAlign = 'center';
+    
+    // 繪製主文字
+    ctx.fillText("🌟 無敵之身 🌟", 0, 0);
 
-                // 4. 繪製主文字
-                //ctx.fillStyle = grad;
-                ctx.font = `900 ${Math.floor(drawW * 0.35)}px "Inter", sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.fillText("🌟 無敵之身 🌟", 0, 0);
+    // 4. 💡 強化邊框：用深金色的描邊，確保在任何背景都清楚
+    ctx.strokeStyle = "rgba(184, 134, 11, 0.5)"; // DarkGoldenRod
+    ctx.lineWidth = 1;
+    ctx.strokeText("🌟 無敵之身 🌟", 0, 0);
 
-                // 5. 加上白色內發光邊框 (讓字在雜亂背景更清楚)
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
-                ctx.lineWidth = 1;
-                ctx.strokeText("🌟 無敵之身 🌟", 0, 0);
-
-                ctx.restore();
+    ctx.restore();
             } else if (stormMode) {
                 ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.fillStyle = (frame % 20 < 10) ? '#ff4d4d' : '#ffcccc'; ctx.font = `bold ${Math.floor(drawW * 0.3)}px Inter`; ctx.textAlign = 'center'; ctx.fillText("⚠️ 暴風雪來襲 ⚠️", (Math.random()-0.5)*3, -drawH - 30); ctx.font = `bold ${Math.floor(drawW * 0.35)}px serif`; ctx.fillText("🥶", 0, -drawH + 10); ctx.restore();
             }
@@ -1285,16 +1322,23 @@ function drawParticlesRelative() {
     particles.forEach(p => {
         ctx.save();
         ctx.globalAlpha = p.alpha;
+        
 
-if (p.isTrack) {
-            // --- 💡 3. 繪製絲滑線條滑痕 ---
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; // 白色半透感
-            ctx.beginPath();
-            // 畫一個長方形，長度隨 speed 增加，營造線條感
-            let trackLen = p.currentSpeed * 2;
-            ctx.roundRect(p.x - p.width/2, p.y - trackLen, p.width, trackLen, 5);
-            ctx.fill();
-        }
+// --- 💡 1. 繪製絲滑線條滑痕 (改色版) ---
+ if (p.isTrack) {
+    // 改為深一點的雪影色 (淡藍灰)，增加對比度
+    ctx.fillStyle = 'rgba(160, 195, 210, 0.6)'; 
+    ctx.beginPath();
+    
+    // 讓線條長度隨速度變化更有感
+    let trackLen = p.currentSpeed * 2.5; 
+    ctx.roundRect(p.x - p.width/2, p.y - trackLen, p.width, trackLen, 5);
+    ctx.fill();
+
+    // 💡 小細節：在中間加一條更淡的細線，模擬雪板邊緣切入感
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.fillRect(p.x - 1, p.y - trackLen, 2, trackLen);
+}
         else if (p.isStorm) {
             // --- 2. 暴風雪粒子 (恢復顯示！) ---
             ctx.strokeStyle = 'white';
@@ -1304,6 +1348,7 @@ if (p.isTrack) {
             ctx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8);
             ctx.stroke();
         } 
+        
         else {
             // --- 3. 其他噴發型粒子 (圓點類) ---
             if (p.isIceGlow) {
@@ -1368,19 +1413,24 @@ async function triggerGameOver() {
     let nextMsg = "";
 
 const tiers = [
-        { score: 4000, medal: "🐉", title: "【極光永恆主宰】", color: "text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white font-black italic" },
-        { score: 3500, medal: "👑", title: "【冰城至尊神話】", color: "text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-500 font-black" },
-        { score: 2800, medal: "💎", title: "【哈爾濱璀璨鑽石】", color: "text-cyan-300 drop-shadow-[0_0_10px_rgba(103,232,249,0.8)]" },
-        { score: 2200, medal: "🏆", title: "【北境不敗傳說】", color: "text-cyan-300 drop-shadow-[0_0_8px_rgba(103,232,249,0.6)]" },
-        { score: 1900, medal: "🏅", title: "【極地暴風領主】", color: "text-blue-400 font-bold" },          
-        { score: 1600, medal: "🥇", title: "【巔峰滑雪大師】", color: "ttext-slate-300 italic underline decoration-blue-500" },        
-        { score: 1300, medal: "🥈", title: "【穿雲破雪者】", color: "text-yellow-400" },        
-        { score: 1100, medal: "🥉", title: "【專業滑雪手】", color: "text-teal-300" },
-        { score: 900, medal: "🥽", title: "【亞布力征服者】", color: "text-gray-300" },
-        { score: 700, medal: "🥾", title: "【雪地冒險家】", color: "text-orange-300" },
-        { score: 500, medal: "🧣", title: "【滑雪道挑戰者】", color: "text-orange-500" },
-        { score: 350, medal: "⛄", title: "【抗寒先遣隊】", color: "text-yellow-200" },
-        { score: 200, medal: "🍬", title: "【滑雪初體驗】", color: "text-green-300" }
+        { score: 10000, medal: "🐉", title: "【極光永恆主宰】", color: "animate-bounce text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 font-black" },
+        { score: 8500, medal: "⚔️", title: "【北境聖域戰神】", color: "text-transparent bg-clip-text bg-gradient-to-t from-slate-900 to-slate-100 drop-shadow-xl" },
+        { score: 7200, medal: "🏰", title: "【冰雪永恆帝王】", color: "text-white drop-shadow-[0_0_15px_rgba(255,255,255,1)] uppercase" },
+        { score: 6000, medal: "👑", title: "【冰城至尊神話】", color: "text-red-500 font-black tracking-tighter" },
+        { score: 5000, medal: "💎", title: "【哈爾濱璀璨鑽石】", color: "text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-700" },
+        { score: 4200, medal: "🏆", title: "【北境不敗傳說】", color: "text-blue-200 font-black italic" },
+        { score: 3500, medal: "🏅", title: "【極地暴風領主】", color: "text-indigo-300 animate-pulse" },          
+        { score: 2900, medal: "🦅", title: "【極地巡航獵鷹】", color: "text-cyan-300 drop-shadow-[0_0_10px_rgba(103,232,249,0.8)]" },  
+        { score: 2400, medal: "🦅", title: "【暴風雪統治者】", color: "text-blue-500 font-bold" }, 
+        { score: 2000, medal: "🥇", title: "【巔峰滑雪大師】", color: "text-slate-400 italic" },        
+        { score: 1700, medal: "🥈", title: "【雪道狂人】", color: "text-blue-400" },    
+        { score: 1400, medal: "🥉", title: "【穿雲破雪者】", color: "text-yellow-400 font-bold" },    
+        { score: 1200, medal: "🎿", title: "【專業滑雪手】", color: "text-teal-400" },
+        { score: 900, medal: "🥽", title: "【亞布力征服者】", color: "text-green-400" },
+        { score: 700, medal: "🥾", title: "【雪地冒險家】", color: "text-gray-400" },
+        { score: 550, medal: "🧣", title: "【抗寒先遣隊】", color: "text-orange-500" },
+        { score: 400, medal: "⛄", title: "【雪人製造家】", color: "text-yellow-200" },
+        { score: 250, medal: "🍬", title: "【滑雪初體驗】", color: "text-green-300" }
     ];
 
 let currentTierIdx = -1;
