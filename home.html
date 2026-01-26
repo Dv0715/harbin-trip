@@ -215,8 +215,8 @@
 
 /* 1. 手機版專屬呼吸動畫定義 */
 @keyframes chibi-breath-mobile {
-    0%, 100% { transform: translateX(-50%) scale(0.12, 0.12); }
-    50% { transform: translateX(-50%) scale(0.122, 0.117); }
+    0%, 100% { transform: translateX(-50%) scale(0.11); }
+    50% { transform: translateX(-50%) scale(0.112, 0.108); }
 }
 
     @keyframes glowPulse {
@@ -872,21 +872,17 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     }   
 
 .family-line {
-    width: 100% !important; /* 手機版佔滿全寬，不要用 70% */
-    padding: 0 10px;        /* 左右留一點點安全邊距就好 */
+    width: 100% !important; /* 手機版撐滿全寬 */
+    padding: 0 5px !important; /* 縮小邊距，留給角色更多空間 */
     box-sizing: border-box;
     display: flex;
-    justify-content: space-between; /* 均勻分散人物 */
-    align-items: flex-end;
-    overflow: visible !important;   /* 確保縮放不被裁切 */
+    justify-content: space-around; /* 讓人物更均勻地散開 */
 }
 .chibi-char {
-    position: relative;
-    width: 14%;        /* 7 個人 = 100/7 */
-    flex-shrink: 0;    /* 👈 關鍵：禁止 Flex 壓縮人物空間 */
+    width: 14% !important; /* 確保 7 個人平分寬度 */
+    flex-shrink: 0 !important; /* 👈 絕對禁止收縮 */
     display: flex;
     justify-content: center;
-    align-items: flex-end;
     overflow: visible !important;
 }
 /* 確保所有角色都強制顯示 */
@@ -894,19 +890,18 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
         display: flex !important;
         visibility: visible !important;}
     /* 🔴 平時狀態：只在沒有 .throwing 時播放呼吸 */
-    .chibi-char:not(.throwing) .chibi-sprite {
-        transform: translateX(-50%) scale(0.12); 
-        animation: chibi-breath-mobile 2.5s infinite ease-in-out !important;
-        transform-origin: bottom center;
-    }
+  .chibi-char:not(.throwing) .chibi-sprite {
+    transform: translateX(-50%) scale(0.11) !important; 
+    animation: chibi-breath-mobile 2.5s infinite ease-in-out !important;
+}
 
     /* 🔴 投擲狀態：強行取代所有動畫 */
-    .chibi-char.throwing .chibi-sprite {
-        /* 必須確保比例維持 0.12 */
-        transform: translateX(-50%) scale(0.12) !important;
-        /* 播放投擲序列圖動畫，並取消呼吸動畫 */
-        animation: chibi-action-play 0.6s steps(5) forwards !important;
-    }
+.chibi-char.throwing .chibi-sprite {
+    transform: translateX(-50%) scale(0.11) !important;
+    animation: chibi-action-play 0.6s steps(5) forwards !important;
+}
+
+
 .chapter-grid {
         grid-template-columns: repeat(2, 1fr) !important; /* 手機版維持兩欄，比較不佔空間 */
         gap: 8px !important;
