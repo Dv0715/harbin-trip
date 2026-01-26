@@ -872,19 +872,15 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
     }   
 
 .family-line {
-    width: 100% !important; /* 手機版撐滿全寬 */
-    padding: 0 5px !important; /* 縮小邊距，留給角色更多空間 */
-    box-sizing: border-box;
-    display: flex;
-    justify-content: space-around; /* 讓人物更均勻地散開 */
-}
-.chibi-char {
-    width: 14% !important; /* 確保 7 個人平分寬度 */
-    flex-shrink: 0 !important; /* 👈 絕對禁止收縮 */
-    display: flex;
-    justify-content: center;
-    overflow: visible !important;
-}
+        width: 100% !important;
+        padding: 0 5px !important; /* 手機版邊距降到最低 */
+        justify-content: space-between; /* 手機版讓大家均勻散開 */
+    }
+/* 調整縮放倍率，避免 7 個人擠在一起撞到 */
+    .chibi-char .chibi-sprite {
+        transform: translateX(-50%) scale(0.1) !important; /* 👈 稍微縮小到 0.1 */
+        transform-origin: bottom center;
+    }
 /* 確保所有角色都強制顯示 */
     #chibi-0, #chibi-1, #chibi-2, #chibi-3, #chibi-4, #chibi-5, #chibi-6 {
         display: flex !important;
@@ -984,16 +980,15 @@ position: absolute;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    justify-content: center; 
+    justify-content: center; /* 網頁版置中 */
     align-items: flex-end;
     
-    /* 🟢 網頁版：容器佔 90%，給人物更多空間散開 */
-    width: 90%; 
+    width: 100%;           /* 👈 強制撐開到 100% */
     max-width: 900px; 
-    padding: 0;
+    padding: 0 10px;       /* 👈 縮小邊距，留空間給 Vi */
     pointer-events: auto;
     z-index: 250;
-    overflow: visible !important;
+    overflow: visible !important; /* 👈 確保最右邊的人即使溢出也能看見 */
 }
 /* 弧形雪地層：專心負責背景 */
 .snow-base-layer {
@@ -1075,20 +1070,16 @@ position: absolute;
 
 
 
-/* 1. 確保父容器有足夠空間，且不裁切內容 */
+/* 2. 強制每個人物的佔位格子不可縮減 */
 .chibi-char {
     position: relative;
-    /* 🟢 人物寬度控制：
-       100% / 7人 = 14.28%。 
-       如果你希望人物間距大一點，就把寬度調小（例如 11%）
-    */
-    width: 12%;           /* 網頁版每個人佔容器的 12% */
-    flex-shrink: 0;       /* 禁止人物消失 */
+    width: 14.28% !important; /* 👈 100/7 的精確比例 */
+    flex: 0 0 14.28% !important; /* 👈 關鍵：禁止縮小 (shrink:0), 禁止放大 (grow:0) */
     display: flex;
     justify-content: center;
     align-items: flex-end;
+    overflow: visible !important;
 }
-
 /* 對話框主體 */
 .tip-bubble {
     position: absolute;
