@@ -699,30 +699,41 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
   display: block;
   width: 140px;
   height: 70px;
+  overflow: hidden; /* 🔴 關鍵：掃光超出範圍要隱藏 */
   /* 統一使用 logo-attention-all 這個動畫名稱 */
   animation: logo-attention-all 2.5s infinite ease-in-out;
+  border-radius: 12px; /* 配合圖片形狀稍微圓角，光影轉折才自然 */
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   -webkit-tap-highlight-color: transparent;
   will-change: transform;
   z-index: 10;
+  
+  
 }
 
 
-/* 1. 圖片本身只負責「發光」，不負責「動畫」 */
+
 .ski-logo-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  /* 核心發光：多層疊加，第一層是核心亮點，第二、三層是色彩擴散 */
-filter: 
-    drop-shadow(0 0 3px #fff) 
-    drop-shadow(0 0 12px #d1b306f1) 
-    drop-shadow(0 0 20px rgba(255, 217, 0, 0.34))
-    brightness(1.1) 
-    contrast(1.1);
+    width: 100%;
+    height: 100%;
+    /* 🟢 關鍵：改用 padding 讓圖片在方框內縮小，騰出空間給光暈 */
+    padding: 8px; 
+    box-sizing: border-box; 
+    
+    object-fit: contain;
+
+    filter: drop-shadow(0 0 18px rgba(255, 218, 7, 1));
+    animation: logo-float 3s infinite ease-in-out;
+
+    /* 🟢 強制開啟硬體加速，防止手機版渲染範圍出錯 */
+    will-change: filter, transform;
+    transform: translateZ(0); 
+}
+/* 確保父層不會切掉東西 */
+.ski-game-entrance, .ski-logo-btn {
+    overflow: visible !important;
 }
 
-/* --- 2. 交互回饋 (Hover & Active) --- */
 
 
 /* 網頁版滑鼠懸停 */
@@ -736,6 +747,11 @@ filter:
     filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.9)) brightness(1.2); /* 懸停變金色光 */
   }
 }
+
+
+
+
+
 
 /* 手機與網頁共用的點擊縮放 */
 .ski-logo-btn:active {
@@ -856,19 +872,23 @@ filter:
     }   
 
 .family-line {
-        /* 🟢 手機版容器佔 100% 寬度，確保最左最右的人有位子站 */
-        width: 70% !important;
-        max-width: none;
-        padding: 0 45px; /* 留出空間給兩側的雪人，避免重疊 */
-        box-sizing: border-box;
-    }
+    width: 100% !important; /* 手機版佔滿全寬，不要用 70% */
+    padding: 0 10px;        /* 左右留一點點安全邊距就好 */
+    box-sizing: border-box;
+    display: flex;
+    justify-content: space-between; /* 均勻分散人物 */
+    align-items: flex-end;
+    overflow: visible !important;   /* 確保縮放不被裁切 */
+}
 .chibi-char {
-        /* 🟢 手機版間距：
-           因為外層有 padding，這裡我們同樣使用 14% 確保 7 個人平分。
-        */
-        width: 14% !important;
-        transform: scale(0.95); /* 稍微縮小一點點，增加呼吸感 */
-    }
+    position: relative;
+    width: 14%;        /* 7 個人 = 100/7 */
+    flex-shrink: 0;    /* 👈 關鍵：禁止 Flex 壓縮人物空間 */
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    overflow: visible !important;
+}
 /* 確保所有角色都強制顯示 */
     #chibi-0, #chibi-1, #chibi-2, #chibi-3, #chibi-4, #chibi-5, #chibi-6 {
         display: flex !important;
@@ -877,6 +897,7 @@ filter:
     .chibi-char:not(.throwing) .chibi-sprite {
         transform: translateX(-50%) scale(0.12); 
         animation: chibi-breath-mobile 2.5s infinite ease-in-out !important;
+        transform-origin: bottom center;
     }
 
     /* 🔴 投擲狀態：強行取代所有動畫 */
