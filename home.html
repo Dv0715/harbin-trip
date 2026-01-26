@@ -139,11 +139,21 @@
     }
 
 /* 🟢 解決點擊黑框：移除手機端高亮 */
-.pin, .day-chip, .snowman-btn, .chibi-char {
-    -webkit-tap-highlight-color: transparent !important;
+.pin, .day-chip, .snowman-btn, .chibi-char, .ski-logo-btn {
+    -webkit-tap-highlight-color: transparent !important; /* 移除點擊時的藍色高亮框 */
+    -webkit-touch-callout: none !important;           /* 禁用 iOS 長按彈出系統選單 */
+    -webkit-user-select: none !important;              /* 禁用選取 (Chrome/Safari) */
+    -khtml-user-select: none !important;
+    -moz-user-select: none !important;                 /* 針對 Firefox */
+    -ms-user-select: none !important;
+    user-select: none !important;                      /* 標準禁選屬性 */
     outline: none !important;
+    cursor: pointer;
 }
-
+/* 針對雪球與粒子也禁止互動，避免擋到點擊 */
+.snowball-projectile, .hit-spark {
+    pointer-events: none !important;
+}
 
 
 
@@ -704,14 +714,12 @@ transform: translateY(-8px); /* 向上浮起更多，更明顯 */
   height: 100%;
   object-fit: contain;
   /* 核心發光：多層疊加，第一層是核心亮點，第二、三層是色彩擴散 */
-  filter: 
-    drop-shadow(0 0 3px #fff)           /* 最內層核心白光 */
-    drop-shadow(0 0 12px #ffe65bf1)      /* 中層亮黃色 */
-    drop-shadow(0 0 20px rgba(255, 217, 0, 0.34)); /* 最外層光暈擴散 */
-  
-  /* 讓圖片本身亮度提升，避免被背景色壓過 */
-  brightness: 1.1;
-  contrast: 1.1;
+filter: 
+    drop-shadow(0 0 3px #fff) 
+    drop-shadow(0 0 12px #d1b306f1) 
+    drop-shadow(0 0 20px rgba(255, 217, 0, 0.34))
+    brightness(1.1) 
+    contrast(1.1);
 }
 
 /* --- 2. 交互回饋 (Hover & Active) --- */
