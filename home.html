@@ -1715,46 +1715,49 @@ document.querySelectorAll('.pin').forEach(p => {
 
 document.querySelectorAll('.day-chip').forEach(chip => {
     chip.addEventListener('click', function(e) {
-        // 1. 取得目標天數 (例如 "day01")
-        const targetDay = this.getAttribute('href').split('.')[0]; 
+        e.preventDefault(); // 攔截預設跳轉，由我們控制節奏
         
+        const targetUrl = this.getAttribute('href');
+        const targetDay = targetUrl.split('.')[0]; 
         const targetPins = document.querySelectorAll(`.pin[data-day="${targetDay}"]`);
         const allPins = document.querySelectorAll('.pin');
         const allAnchors = document.querySelectorAll('.anchor');
 
+        // 1. 立即給予視覺反饋 (0秒)
+        allPins.forEach(p => p.style.opacity = "0.1");
+        allAnchors.forEach(a => a.style.opacity = "0.1");
+
         if (targetPins.length > 0) {
-            e.preventDefault();
-
-            // 視覺聯動：突顯目標，淡化其他
-            allPins.forEach(p => p.style.opacity = "0.2");
-            allAnchors.forEach(a => a.style.opacity = "0.2");
-
             targetPins.forEach(p => {
                 p.style.opacity = "1";
                 p.style.zIndex = "1000";
-                // 強制觸發放大效果
                 const thumb = p.querySelector('.pin-thumb');
-                thumb.style.transform = "scale(1.5) translateY(-15px)";
+                // 這裡的動畫時間可以稍微縮短，感覺更輕快
+                thumb.style.transform = "scale(1.4) translateY(-10px)";
                 thumb.style.borderColor = "var(--accent)";
             });
-
-            // 2.5 秒後恢復並跳轉
-            setTimeout(() => {
-                allPins.forEach(p => {
-                    p.style.opacity = "1";
-                    p.querySelector('.pin-thumb').style.transform = "";
-                    p.querySelector('.pin-thumb').style.borderColor = "";
-                });
-                allAnchors.forEach(a => a.style.opacity = "0.95");
-                
-                // 🔴 導航體驗：使用者在手機上看清楚位置後，自動幫他跳轉
-                window.location.href = this.getAttribute('href');
-            }, 2500);
         }
+
+        // 2. 大幅縮短等待時間 (從 2500ms 改為 500ms)
+        // 使用者只要感覺到地圖有「亮一下」的回饋感即可，不需要看完完整動畫
+        setTimeout(() => {
+            window.location.href = targetUrl;
+        }, 500); 
     });
 });
 
+// 頁面載入後執行
+window.addEventListener('DOMContentLoaded', () => {
+    const gameElements = document.querySelectorAll('.snowman-btn, .chibi-char');
 
+    gameElements.forEach(el => {
+        // 🚫 攔截長按彈出的系統選單
+        el.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            return false;
+        });
+    });
+});
 
 
 
